@@ -20,26 +20,25 @@ module Integer_Datapath(
 	 input [1:0] D_sel,
 	 input [2:0] Y_Sel,
     input [4:0] D_Addr, S_Addr, T_Addr, FS, shamt,
-    input [31:0] DY, DT, PC_In, /*IOin,*/
+    input [31:0] DY, DT, PC_In,
     output N, Z, C, V,
     output [31:0] D_OUT, ALU_OUT,
 	 output wire [31:0] RS
     );
 
 	reg  [31:0] HI, LO;
+	wire [4:0]  D_mux;
 	wire [31:0] T;
 	wire [31:0] S;
 	wire [31:0] Y_HI, Y_LO;
 	wire [31:0] T_OUT;
 	wire [31:0] ALU_Out_WIRE, D_in;
-	wire [4:0] D_mux;
-	/*wire [31:0] IOout;*/
 
 	assign D_mux = (D_sel == 2'b00) ? (D_Addr) :
 						(D_sel == 2'b01) ? (T_Addr) :
 						(D_sel == 2'b10) ? (5'd31)  :
 												 (5'd29)  ;
-
+	// Register File
 	regfile32 RF_32 		(.clk(clk),
 								 .reset(reset),
 								 .D_En(D_En),
@@ -64,7 +63,7 @@ module Integer_Datapath(
 								 .reset(reset),
 								 .D(T_OUT),
 								 .Q(D_OUT));
-
+	// ALU
 	ALU_32 	 ALU32 		(.S(RS),
 								 .T(D_OUT),
 								 .FS(FS),
@@ -92,8 +91,6 @@ module Integer_Datapath(
 	reg32     ALU_OUTREG (.clk(clk), .reset(reset), .D(Y_LO), .Q(ALU_Out_WIRE));
 
 	reg32     D_in_REG   (.clk(clk), .reset(reset), .D(DY),   .Q(D_in));
-
-   //reg32     IO_in_REG  (.clk(clk), .reset(reset), .D(IOin), .Q(IOout));
 
 	// Y-MUX
 	assign ALU_OUT = (Y_Sel == 3'h0)  ? HI   			 :
