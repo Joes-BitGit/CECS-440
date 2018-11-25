@@ -42,7 +42,7 @@ module InstructionMemory(
 												  instruction_mem[Address+1],
 												  instruction_mem[Address+2],
 												  instruction_mem[Address+3]}:
-					   (IM_cs && !IM_rd)?  32'hz				    :
+					   (IM_cs && !IM_rd)?  32'hz				    		  :
 												  D_out;
 
 endmodule
