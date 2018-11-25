@@ -24,6 +24,5 @@ module reg32(
 		if (reset) Q <= 0;
 		else Q <= D;
 	end
-
-
+	
 endmodule

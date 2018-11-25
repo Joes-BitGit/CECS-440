@@ -38,8 +38,8 @@ module IO_Memory(
 												  io_mem[Address+1],
 												  io_mem[Address+2],
 												  io_mem[Address+3]}:
-					   /*(io_cs && !io_rd)?*/  32'hz				    ;
-												 // D_Out;
+												  32'hz				  ;
+
 
   initial begin
     INTR = 1'b0;

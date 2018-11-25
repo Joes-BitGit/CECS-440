@@ -37,8 +37,8 @@ module dataMemory(
 												  data_mem[Address+1],
 												  data_mem[Address+2],
 												  data_mem[Address+3]}:
-					   /*(dm_cs && !dm_rd)?*/  32'hz				    ;
-								//				  D_Out;
+												  32'hz				    ;
+
 
 
 endmodule
