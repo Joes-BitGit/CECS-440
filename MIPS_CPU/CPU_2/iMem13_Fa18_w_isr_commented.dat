@@ -1,5 +1,5 @@
-@0
-00 00 00 1f  //            setie
+@0 
+00 00 00 1f  // main:      setie
 3c 01 12 34  //            lui  $01, 0x1234
 34 21 56 78  //            ori  $01, 0x5678      # LI  R01,  0x12345678
 3c 02 87 65  //            lui  $02, 0x8765
@@ -52,9 +52,10 @@ ac ef 00 00  //            sw   $15, 0($07)      # ST  [R07], R15
 3c 10 10 01  //            lui    $16, 0x1001      #load source IO address
 36 10 00 c0  //            ori    $16, 0x00C0      #  0x100100C0 into r16
 72 13 00 00  //            input  $19,  0($16)     #  and input from 6
-72 14 00 04  //            input  $20,  4($16)     #    the IO locations,
+72 14 00 04  //            input  $20,  4($16)     #    the IO locations, 
 72 15 00 08  //            input  $21,  8($16)     #    starting from 0xC0
 72 16 00 0c  //            input  $22, 12($16)
 72 17 00 10  //            input  $23, 16($16)
 72 18 00 14  //            input  $24, 20($16)
 03 e0 00 08  //            jr     $31              # return from interrupt (v1, using $ra)
+

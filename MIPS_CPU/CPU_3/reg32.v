@@ -25,5 +25,4 @@ module reg32(
 		else Q <= D;
 	end
 
-
 endmodule

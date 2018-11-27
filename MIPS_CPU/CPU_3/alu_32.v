@@ -66,17 +66,18 @@ module ALU_32(
 									 .Y_lo(Y_lo_shft));
 
 
-   //mux flags									  C    V    N        Z
-	assign {C,V,N,Z} = (FS == 5'h1E) ? {1'bx, 1'bx,  N_mpy, Z_mpy} :
-							 (FS == 5'h1F) ? {1'bx, 1'bx,  N_div, Z_div} :
-							 (FS == 5'h0C | FS == 5'h0D | FS == 5'h0E) ? {C_shft,V_shft,N_shft,Z_shft} :
-												  {C_mip,V_mip, N_mip, Z_mip};
+   //mux flags			
+	assign {C,V,N,Z} = 	(FS == 5'h1E) ? {1'bx, 1'bx,  N_mpy, Z_mpy  }:
+								(FS == 5'h1F) ? {1'bx, 1'bx,  N_div, Z_div  }:
+								(FS == 5'h0C | FS == 5'h0D | FS == 5'h0E) ? 
+													 {C_shft,V_shft,N_shft,Z_shft}:
+													 {C_mip, V_mip, N_mip, Z_mip };
 
 	//mux module outputs
-	assign {Y_hi,Y_lo} = (FS==5'h1E)     ? {Y_hi_mpy,   Y_lo_mpy }:
-								(FS==5'h1F)     ? {Y_hi_div,   Y_lo_div }:
+	assign {Y_hi,Y_lo} = (FS==5'h1E)   ? {Y_hi_mpy,   Y_lo_mpy }:
+								(FS==5'h1F)   ? {Y_hi_div,   Y_lo_div }:
 								(FS==5'h0C|FS==5'h0D|FS==5'h0E) 
-													 ? {32'b0,      Y_lo_shft}:
-													   {Y_hi_mip,   Y_lo_mip };
+												  ? {32'b0,      Y_lo_shft}:
+													 {Y_hi_mip,   Y_lo_mip };
 
 endmodule
