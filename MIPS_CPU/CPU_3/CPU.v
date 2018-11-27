@@ -2,18 +2,13 @@
 /****************************** C E C S  4 4 0 ******************************
  *
  * File Name:  CPU.v
- * Project:    Senior Design Project
+ * Project:    CECS 440 Senior Design Project
  * Designer:   Joseph Almeida, Peter Huynh
  * Email:      Josephnalmeida@gmail.com, peterhuynh75@gmail.com
  * Rev. No.:   Version 1.0
- * Rev. Date:  October 19, 2018
+ * Rev. Date:  November 24th, 2018
  *
- * Purpose:   Test fixture that instantiates the control unit,
- *				  instruction unit, integer datapath, and the data memory modules.
- *				  The testbench will implement the set of microoperations specified
- *				  in the lab document as well as reading the MIPS register file
- *				  and display the contents of the memory location starting
- *				  at hex address 0x03F0
+ * Purpose:    CPU module wraps the MCU, IU and IDP modules together.
  *
  * Notes:
  *
@@ -45,15 +40,15 @@ module CPU(input sys_clk,
           wire FLAG_ld;
           wire [2:0] Y_sel;
           wire [1:0] PC_sel;
-          wire [1:0] D_sel; //this is new too
+          wire [1:0] D_sel;
           wire psc, psv, psn, psz;
           wire [31:0] SE_16_wire, PC_out_wire, IR_out_wire, SREG_JR_WIRE;
 
 
-          MCU					  MCU		(.sys_clk(sys_clk),
+         MCU					  MCU		(.sys_clk(sys_clk),
         										 .reset(reset),
         										 .INTR(INTR),
-        										 .C(C), .V(V), .Z(Z), .N(N),
+        										 .C(C),.V(V),.Z(Z),.N(N),
         										 .FS(FS),
         										 .IR(IR_out_wire),
         										 .INT_ACK(INT_ACK),
@@ -62,12 +57,12 @@ module CPU(input sys_clk,
         										 .PC_inc(PC_inc),
         										 .IM_cs(IM_cs),
         										 .IM_wr(IM_wr),
-                                       .IM_rd(IM_rd),
-                                       .IR_ld(IR_ld),
+                                     .IM_rd(IM_rd),
+                                     .IR_ld(IR_ld),
         										 .D_En(D_En),
         										 .D_sel(D_sel),
         										 .T_sel(T_sel),
-                             .Y_sel(Y_sel),
+												 .Y_sel(Y_sel),
         										 .HILO_ld(HILO_ld),
         										 .flag_ld(FLAG_ld),
         										 .DM_cs(DM_cs),
@@ -76,45 +71,45 @@ module CPU(input sys_clk,
         										 .io_cs(IO_cs),
         										 .io_wr(IO_wr),
         										 .io_rd(IO_rd),
-        										 .psc(psc), .psv(psv), .psn(psn), .psz(psz),
+        										 .psc(psc),.psv(psv),.psn(psn),.psz(psz),
         										 .S_sel(S_sel_wire));
 
 
         	Instruction_Unit    IU     (.clk(sys_clk),
-                                       .reset(reset),
-                                       .PC_ld(PC_ld),
-                                       .PC_inc(PC_inc),
-                                       .IM_cs(IM_cs),
-                                       .IM_wr(IM_wr),
+                                     .reset(reset),
+                                     .PC_ld(PC_ld),
+                                     .PC_inc(PC_inc),
+                                     .IM_cs(IM_cs),
+                                     .IM_wr(IM_wr),
         										 .PC_jr(SREG_JR_WIRE),
-                                       .IM_rd(IM_rd),
-                                       .IR_ld(IR_ld),
+                                     .IM_rd(IM_rd),
+                                     .IR_ld(IR_ld),
         										 .PC_sel(PC_sel),
-                                       .PC_in(Address),
-                                       .SE_16(SE_16_wire),
-                                       .PC_out(PC_out_wire),
-                                       .IR_out(IR_out_wire));
+                                     .PC_in(Address),
+                                     .SE_16(SE_16_wire),
+                                     .PC_out(PC_out_wire),
+                                     .IR_out(IR_out_wire));
 
-            Integer_Datapath    IDP   (.clk(sys_clk),
+         Integer_Datapath    IDP   (.clk(sys_clk),
         										 .reset(reset),
         										 .D_En(D_En),
-                                       .T_Sel(T_sel),
+                                     .T_Sel(T_sel),
         										 .HILO_ld(HILO_ld),
         										 .FLAG_ld(FLAG_ld),
         										 .D_sel(D_sel),
-                                       .Y_Sel(Y_sel),
+                                     .Y_Sel(Y_sel),
         										 .RS(SREG_JR_WIRE),
-                                       .D_Addr(IR_out_wire[15:11]),
-                                       .S_Addr(IR_out_wire[25:21]),
-                                       .T_Addr(IR_out_wire[20:16]),
-                                       .FS(FS),
-                                       .DY(Din),
+                                     .D_Addr(IR_out_wire[15:11]),
+                                     .S_Addr(IR_out_wire[25:21]),
+                                     .T_Addr(IR_out_wire[20:16]),
+                                     .FS(FS),
+                                     .DY(Din),
         										 .DT(SE_16_wire),
-                                       .PC_In(PC_out_wire),
-                                       .N(N), .Z(Z), .C(C), .V(V),
-                                       .D_OUT(Dout),
-                                       .ALU_OUT(Address),
+                                     .PC_In(PC_out_wire),
+                                     .N(N),.Z(Z),.C(C),.V(V),
+                                     .D_OUT(Dout),
+                                     .ALU_OUT(Address),
         										 .shamt(IR_out_wire[10:6]),
-        										 .psc(psc), .psv(psv), .psn(psn), .psz(psz),
+        										 .psc(psc),.psv(psv),.psn(psn),.psz(psz),
         										 .S_Sel(S_sel_wire));
 endmodule

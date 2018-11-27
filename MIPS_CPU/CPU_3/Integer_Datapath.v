@@ -52,16 +52,14 @@ module Integer_Datapath(
 								 .S(S),
 								 .T(T));
 
-//	assign {C, V, N, Z} = {Creg, Vreg, Nreg, Zreg}; //in case we need it
-
 	// T-MUX
-	assign T_OUT = (T_Sel == 2'b01) ? DT: //immediate value
-						(T_Sel == 2'b10) ? {28'b0, psc, psv, psn, psz}: //selects this to put present state flags into memory
-            (T_Sel == 2'b11) ? PC_In: //
-											   T;
+	assign T_OUT = (T_Sel == 2'b01) ? DT:
+						(T_Sel == 2'b10) ? {28'b0, psc, psv, psn, psz}: 
+						(T_Sel == 2'b11) ? PC_In: 
+											    T;
    // S-MUX
-   assign S_OUT = (S_Sel == 1'b1) ? ALU_Out_WIRE : //immediate value
-                          S;
+   assign S_OUT = (S_Sel == 1'b1) ? ALU_Out_WIRE :
+												S;
 	// RS Register
 	reg32     RS32       (.clk(clk),
 								 .reset(reset),
@@ -73,7 +71,6 @@ module Integer_Datapath(
 								 .reset(reset),
 								 .D(T_OUT),
 								 .Q(D_OUT));
-
 
 	ALU_32 	 ALU32 		(.S(RS),
 								 .T(D_OUT),
@@ -90,18 +87,16 @@ module Integer_Datapath(
 
 	always @ (posedge clk, posedge reset) begin
 		if (reset) begin
-			// {Creg, Vreg, Nreg, Zreg} <= 4'b0;
 			{HI,LO} <= 2'b0;
 		end
-		// else if (FLAG_ld == 1'b1)
-		// 	{Creg, Vreg, Nreg, Zreg} <= {C, V, N, Z}; //goes into the T_MUX
 		else if (HILO_ld == 1'b1)
 			{HI,LO} <= {Y_HI, Y_LO};
 	end
 
 	// ALU_OUT Register
 	reg32     ALU_OUTREG (.clk(clk), .reset(reset), .D(Y_LO), .Q(ALU_Out_WIRE));
-
+	
+	// D_In Register
 	reg32     D_in_REG   (.clk(clk), .reset(reset), .D(DY),   .Q(D_in));
 
 	// Y-MUX

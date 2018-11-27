@@ -1,5 +1,5 @@
 @0
-00 00 00 1f  // main:      setie
+00 00 00 1f  // main:      setie	
 3c 01 12 34  //            lui  $01, 0x1234
 34 21 56 78  //            ori  $01, 0x5678      # LI  R01,  0x12345678
 3c 02 87 65  //            lui  $02, 0x8765
@@ -10,7 +10,7 @@
 34 84 dc ba  //            ori  $04, 0xDCBA      # LI  R04,  0x01FEDCBA
 3c 05 5a 5a  //            lui  $05, 0x5A5A
 34 a5 5a 5a  //            ori  $05, 0x5A5A      # LI  R05,  0x5A5A5A5A
-3c 06 ff ff  //            lui  $06, 0xFFFF	
+3c 06 ff ff  //            lui  $06, 0xFFFF
 34 c6 ff ff  //            ori  $06, 0xFFFF      # LI  R06,  0xFFFFFFFF
 3c 07 ff ff  //            lui  $07, 0xFFFF
 34 e7 ff 00  //            ori  $07, 0xFF00      # LI  R07,  0xFFFFFF00
