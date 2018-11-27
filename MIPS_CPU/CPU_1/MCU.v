@@ -279,6 +279,7 @@ module MCU(
 				ADDI:
 				begin
 					@(negedge sys_clk)
+					// control word assignments: ALU_out <- RS($rs) + RT(se16)
 					{PC_sel, PC_ld, PC_inc, IR_ld}			 	= 5'b00_0_0_0;
 					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
 					{D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b0_00_0_0_000;
@@ -308,7 +309,7 @@ module MCU(
 			   MFHI:
 			   begin
 				   @(negedge sys_clk)
-				   // control word assignments: ALU_out <- RS($rs) + RT($rt)
+				   // control word assignments: Rd($rd) <- HI
 				   {PC_sel, PC_ld, PC_inc, IR_ld}			 	= 5'b00_0_0_0;
 				   {IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
 				   {D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b1_00_0_0_000;
@@ -324,7 +325,7 @@ module MCU(
 				MFLO:
 				begin
 					@(negedge sys_clk)
-					// control word assignments: ALU_out <- LO
+					// control word assignments: Rd($rd) <- LO
 					{PC_sel, PC_ld, PC_inc, IR_ld}			 	= 5'b00_0_0_0;
 					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
 					{D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b1_00_0_0_001;
@@ -340,7 +341,7 @@ module MCU(
 				MULT:
 				begin
 					@(negedge sys_clk)
-					// control word assignments: ALU_out <- LO
+					// control word assignments: {HI,LO} <- RS($rs) * RT($rt)
 					{PC_sel, PC_ld, PC_inc, IR_ld}			 	= 5'b00_0_0_0;
 					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
 					{D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b0_00_0_1_000;
@@ -356,7 +357,8 @@ module MCU(
 				DIV:
 				begin
 					@(negedge sys_clk)
-					// control word assignments: ALU_out <- LO
+					// control word assignments: {HI,LO} <- {RS($rs) % RT($rt), 
+					//													  RS($rs) / RT($rt)}
 					{PC_sel, PC_ld, PC_inc, IR_ld}			 	= 5'b00_0_0_0;
 					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
 					{D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b0_00_0_1_000;
@@ -468,7 +470,7 @@ module MCU(
 				NOR:
 				begin
 					@(negedge sys_clk)
-					// control word assignments: ALU_out <- RS($rs) | RT($rt)
+					// control word assignments: ALU_out <- ~(RS($rs) | RT($rt))
 					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
 					{IM_cs, IM_rd, IM_wr}						 	= 3'b0_0_0;
 					{D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b0_00_0_0_000;
@@ -499,7 +501,7 @@ module MCU(
 				begin
 					@(negedge sys_clk)
 					if(psz == 1'b1) begin
-						// control word assignments: PC <- PC + {se_16[15:0], 2'b0}
+						// control word assignments: PC <- PC + {se_16[29:0], 2'b0}
 						{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_1_0_0;
 						{IM_cs, IM_rd, IM_wr}						 	= 3'b0_0_0;
 						{D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b0_00_0_0_000;
@@ -539,7 +541,7 @@ module MCU(
 				begin
 					@(negedge sys_clk)
 					if(psz == 1'b0) begin
-						// control word assignments: PC <- PC + {se_16[15:0], 2'b0}
+						// control word assignments: PC <- PC + {se_16[29:0], 2'b0}
 						{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_1_0_0;
 						{IM_cs, IM_rd, IM_wr}						 	= 3'b0_0_0;
 						{D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b0_00_0_0_000;
@@ -581,7 +583,7 @@ module MCU(
   					@(negedge sys_clk)
             // if s <= 0, branch
   					if(psz == 1'b1 || psn == 1'b1) begin
-  						// control word assignments: PC <- PC + {se_16[15:0], 2'b0}
+  						// control word assignments: PC <- PC + {se_16[29:0], 2'b0}
   						{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_1_0_0;
   						{IM_cs, IM_rd, IM_wr}						 	= 3'b0_0_0;
   						{D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b0_00_0_0_000;
@@ -623,7 +625,7 @@ module MCU(
 				   @(negedge sys_clk)
 				   // if s >= 0, branch
 						if(psz == 1'b1 || psn == 1'b0) begin
-						// control word assignments: PC <- PC + {se_16[15:0], 2'b0}
+						// control word assignments: PC <- PC + {se_16[29:0], 2'b0}
 						{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_1_0_0;
 						{IM_cs, IM_rd, IM_wr}						 	= 3'b0_0_0;
 						{D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b0_00_0_0_000;
@@ -713,6 +715,7 @@ module MCU(
 				LW_MA:
 				begin
 					@(negedge sys_clk)
+					// control word assignments: Din <- DM[ALU_out]
 					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
 					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
 					{D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b0_00_0_0_010;
@@ -729,7 +732,7 @@ module MCU(
 				SLL:
 				begin
 					@(negedge sys_clk)
-					// control word assignments:
+					// control word assignments: ALU_out <- RS($rs) << 1
 					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
 					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
 					{D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b0_00_0_0_000;
@@ -745,7 +748,7 @@ module MCU(
 				SRL:
 				begin
 					@(negedge sys_clk)
-					// control word assignments:
+					// control word assignments: ALU_out <- RS($rs) >> 1
 					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
 					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
 					{D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b0_00_0_0_000;
@@ -761,7 +764,7 @@ module MCU(
 				SRA:
 				begin
 					@(negedge sys_clk)
-					// control word assignments:
+					// control word assignments: ALU_out <- RS($rs) >>> 1
 					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
 					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
 					{D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b0_00_0_0_000;
@@ -777,7 +780,7 @@ module MCU(
 				SLT:
 				begin
 					@(negedge sys_clk)
-					// control word assignments:
+					// control word assignments: ALU_out <- if (RS < RT) 1 else 0
 					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
 					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
 					{D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b0_00_0_0_000;
@@ -793,7 +796,7 @@ module MCU(
 				SLTI:
 				begin
 					@(negedge sys_clk)
-					// control word assignments:
+					// control word assignments: ALU_out <- if (RS < RT(se16))) 1 else 0
 					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
 					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
 					{D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b0_00_0_0_000;
@@ -809,7 +812,7 @@ module MCU(
 				SLTU:
 				begin
 					@(negedge sys_clk)
-					// control word assignments:
+					// control word assignments: ALU_out <- if (RS < RT)) 1 else 0
 					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
 					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
 					{D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b0_00_0_0_000;
@@ -825,7 +828,7 @@ module MCU(
 				SLTIU:
 				begin
 					@(negedge sys_clk)
-					// control word assignments:
+					// control word assignments: ALU_out <- if (RS < RT(se16))) 1 else 0
 					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
 					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
 					{D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b0_00_0_0_000;
@@ -841,7 +844,7 @@ module MCU(
 				JUMP:
 				begin
 					@(negedge sys_clk)
-					// control word assignments:
+					// control word assignments: PC <- {PC[31:28], IR[25:0], 2'b0}
 					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b01_1_0_0;
 					{IM_cs, IM_rd, IM_wr}						 	= 3'b0_0_0;
 					{D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b0_00_0_0_000;
@@ -858,7 +861,8 @@ module MCU(
 				JAL:
 				begin
 					@(negedge sys_clk)
-					// control word assignments:
+					// control word assignments: PC <- {PC[31:28], IR[25:0], 2'b0}
+					//                           R31<- PC
 					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b01_1_0_0;
 					{IM_cs, IM_rd, IM_wr}						 	= 3'b0_0_0;
 					{D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b1_10_0_0_100;
@@ -920,7 +924,7 @@ module MCU(
 				WB_LW:
 				begin
 					@(negedge sys_clk)
-					// control word assignments: M[ ALU_out($rs + SE_16)] <- RT($rt)
+					// control word assignments: RT <- Din
 					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
 					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
 					{D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b1_01_0_0_011;
