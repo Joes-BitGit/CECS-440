@@ -2,13 +2,14 @@
 /****************************** C E C S  4 4 0 ******************************
  *
  * File Name:  CPU.v
- * Project:    Senior Design Project
+ * Project:    CECS 440 Senior Design Project
  * Designer:   Joseph Almeida, Peter Huynh
  * Email:      Josephnalmeida@gmail.com, peterhuynh75@gmail.com
  * Rev. No.:   Version 1.0
- * Rev. Date:  October 19, 2018
+ * Rev. Date:  November 24th, 2018
  *
- * Purpose:
+ * Purpose:		 CPU module wraps the MCU, IU and IDP modules together to be used
+ *             in the top level module.
  *
  * Notes:
  *
