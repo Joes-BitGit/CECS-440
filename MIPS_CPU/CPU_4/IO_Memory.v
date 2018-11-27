@@ -3,13 +3,15 @@
  *
  * File Name:  IO_Memory.v
  * Project:    Lab_Assignment_4
- * Designer:   Peter Huynh
+ * Designer:   Peter Huynh, Joseph Almeida
  * Email:      peterhuynh75@gmail.com
+ *					josephnalmeida@gmail.com
  * Rev. No.:   Version 1.0
- * Rev. Date:  October 5, 2018
+ * Rev. Date:  November 24th, 2018
  *
- * Purpose: 4K X 8 Data Memory that is byte addressable
- *				in big endinan format.
+ * Purpose: 	4K X 8 I/O Memory that is byte addressable
+ *					in big endinan format. It also provides an interrupt request
+ * 				to the CPU and has an INT_ACK input from the CPU.
  *
  * Notes:
  *
@@ -38,7 +40,7 @@ module IO_Memory(
 												  io_mem[Address+1],
 												  io_mem[Address+2],
 												  io_mem[Address+3]}:
-                          32'hz				    ;
+												  32'hz				  ;
 
   initial begin
     INTR = 1'b0;

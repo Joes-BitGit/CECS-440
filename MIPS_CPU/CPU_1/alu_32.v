@@ -60,9 +60,9 @@ module ALU_32(
 									 
 	
    //mux flags									  C    V    N        Z
-	assign {C,V,N,Z} = (FS == 5'h1E) ? {1'bx, 1'bx,  N_mpy, Z_mpy} :
-							 (FS == 5'h1F) ? {1'bx, 1'bx,  N_div, Z_div} :
-												  {C_mip,V_mip, N_mip, Z_mip};
+	assign {C,V,N,Z} = 	(FS == 5'h1E) ? {1'bx, 1'bx,  N_mpy, Z_mpy} :
+								(FS == 5'h1F) ? {1'bx, 1'bx,  N_div, Z_div} :
+													 {C_mip,V_mip, N_mip, Z_mip};
 												 
 	//mux module outputs
 	assign {Y_hi,Y_lo} = (FS == 5'h1E) ? {Y_hi_mpy, Y_lo_mpy} :

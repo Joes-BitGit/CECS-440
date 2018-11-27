@@ -2,7 +2,7 @@
 /****************************** C E C S  4 4 0 ******************************
  *
  * File Name:  Integer_Datapath.v
- * Project:    Lab_Assignment_4
+ * Project:    CECS 440 Senior Project Design
  * Designer:   Joseph Almeida
  * Email:      Josephnalmeida@gmail.com
  * Rev. No.:   Version 1.1
@@ -29,11 +29,11 @@ module Integer_Datapath(
 
 	wire  Creg, Vreg, Nreg, Zreg;
 	reg  [31:0] HI, LO;
-  reg  [31:0] VHI, VLO;
+	reg  [31:0] VHI, VLO;
 	wire [31:0] T;
 	wire [31:0] S;
 	wire [31:0] Y_HI, Y_LO;
-  wire [31:0] VY_HI, VY_LO, VALU_Out_WIRE;
+	wire [31:0] VY_HI, VY_LO, VALU_Out_WIRE;
 	wire [31:0] T_OUT, S_OUT;
 	wire [31:0] ALU_Out_WIRE, D_in;
 	wire [4:0] D_mux;
@@ -53,31 +53,28 @@ module Integer_Datapath(
 								 .S(S),
 								 .T(T));
 
-//	assign {C, V, N, Z} = {Creg, Vreg, Nreg, Zreg}; //in case we need it
-
 	// T-MUX
-	assign T_OUT = (T_Sel == 2'b01) ? DT: //immediate value
-						(T_Sel == 2'b10) ? {28'b0, psc, psv, psn, psz}: //selects this to put present state flags into memory
-            (T_Sel == 2'b11) ? PC_In: //
-											   T;
+	assign T_OUT = (T_Sel == 2'b01) ? DT: 
+						(T_Sel == 2'b10) ? {28'b0, psc, psv, psn, psz}: 
+						(T_Sel == 2'b11) ? PC_In: 
+												 T;
    // S-MUX
-   assign S_OUT = (S_Sel == 1'b1) ? ALU_Out_WIRE : //used for return interrupt
-                          S;
+   assign S_OUT = (S_Sel == 1'b1) ? ALU_Out_WIRE : 
+												S;
 	// RS Register
 	reg32     RS32       (.clk(clk),
 								 .reset(reset),
-								 .D(S_OUT), //input from the S_MUX that selects ALU_OUT or RS to use for return interrupt
-								 .Q(RS)); //output to the ALU
+								 .D(S_OUT), 
+								 .Q(RS)); 
 
 	// RT Register
 	reg32     RT32       (.clk(clk),
 								 .reset(reset),
 								 .D(T_OUT),
 								 .Q(D_OUT));
-
-
-	ALU_32 	 ALU32 		(.S(RS), //output from the RS register that had input of S_MUX
-								 .T(D_OUT), //input from RT register that had input from T_MUX
+	// ALU
+	ALU_32 	 ALU32 		(.S(RS), 
+								 .T(D_OUT),
 								 .FS(FS),
 								 .Y_hi(Y_HI),
 								 .Y_lo(Y_LO),
@@ -87,13 +84,13 @@ module Integer_Datapath(
 								 .V(Vreg),
 								 .shamt(shamt));
 
-
-  VALU_32 VALU_32 (.S(RS),
-                   .T(D_OUT),
-                   .FS(FS),
-                   .SPLAT(SPLAT),
-                   .VY_hi(VY_HI),
-                   .VY_lo(VY_LO));
+	//8-Bit Vector ALU
+   VALU_32 VALU_32 		(.S(RS),
+								 .T(D_OUT),
+								 .FS(FS),
+								 .SPLAT(SPLAT),
+								 .VY_hi(VY_HI),
+								 .VY_lo(VY_LO));
 
   assign {C, V, N, Z} = (FLAG_ld) ? DY[3:0] : {Creg, Vreg, Nreg, Zreg};
 
@@ -112,11 +109,12 @@ module Integer_Datapath(
 
 	// ALU_OUT Register
 	reg32     ALU_OUTREG (.clk(clk), .reset(reset), .D(Y_LO), .Q(ALU_Out_WIRE));
-
+	
+	// D_in Register
 	reg32     D_in_REG   (.clk(clk), .reset(reset), .D(DY),   .Q(D_in));
 
-  // Vector ALU_OUT Register
-	reg32     VALU_OUT (.clk(clk), .reset(reset), .D(VY_LO), .Q(VALU_Out_WIRE));
+   // Vector ALU_OUT Register
+	reg32     VALU_OUT   (.clk(clk), .reset(reset), .D(VY_LO),.Q(VALU_Out_WIRE));
 
 
 	// Y-MUX
@@ -125,9 +123,9 @@ module Integer_Datapath(
 						  (Y_Sel == 3'h2)  ? ALU_Out_WIRE :
 						  (Y_Sel == 3'h3)  ? D_in   		 :
 						  (Y_Sel == 3'h4)  ? PC_In     	 :
-              (Y_Sel == 3'h5)  ? VHI         :
-              (Y_Sel == 3'h6)  ? VLO         :
-                                 VALU_Out_WIRE;
+						  (Y_Sel == 3'h5)  ? VHI          :
+						  (Y_Sel == 3'h6)  ? VLO          :
+												   VALU_Out_WIRE;
 
 
 endmodule

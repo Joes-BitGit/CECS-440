@@ -2,12 +2,12 @@
 /****************************** C E C S  4 4 0 ******************************
  *
  * File Name:  MCU.v
- * Project:    Lab_Assignment_6
+ * Project:    Senior Project Design
  * Designer:   Joseph Almeida, Peter Huynh, R. W. Allison
  * Email:      josephnalmeida@gmail.com, peterhuynh75@gmail.com,
  * 				rob.allison@csulb.edu
  * Rev. No.:   Version 1.0
- * Rev. Date:  October 22, 2018
+ * Rev. Date:  November 24, 2018
  *
  * Purpose:    A state machine implementing the MIPS Control Unit (MCU)
  *					for the major cycles of fetch, execture and some MIPS
@@ -65,7 +65,10 @@ module MCU(
 				 INT_ACK 									  	= 1'b0;
 				 {DM_cs, DM_rd, DM_wr} 					  	= 3'b0_0_0;
 				 #1 $display("t=%t  Contents=%h $r=%d || Contents=%h $r=%d" ,
-					 $time, MIPS_TB.CPU.IDP.RF_32.data[i], i[4:0], MIPS_TB.CPU.IDP.RF_32.data[i+16], (i[4:0]+ 5'd16));
+					 $time, MIPS_TB.CPU.IDP.RF_32.data[i], 
+							  i[4:0], 
+							  MIPS_TB.CPU.IDP.RF_32.data[i+16], 
+							  (i[4:0]+ 5'd16));
 				end
 			end //end for loop
 		end //end begin
@@ -90,17 +93,17 @@ module MCU(
 
 	// state assignments
 	parameter
-		RESET     = 00,  FETCH   = 01,  DECODE  = 02,
-		ADD       = 10,  ADDU    = 11,  AND     = 12,  OR    = 13, NOR   = 14, JR	    = 15,
-    XOR       = 16,  SLTU    = 17,  DIV     = 18,  SUB   = 19,
-		ORI       = 20,  LUI     = 21,  LW      = 22,  SW    = 23, ADDI  = 24, SRL    = 25,
-		SRA       = 26,  SLL     = 27,  SLT     = 28,  XORI  = 29,
-		WB_alu    = 30,  WB_imm  = 31,  WB_Din  = 32,  WB_hi = 33, WB_lo = 34, WB_mem = 35,
-    LW_MA     = 36,  WB_LW   = 37,  JAL     = 38,  SLTIU = 39,
-		BEQ       = 40,  BEQ2	   = 41,  BNE     = 42,  BNE2  = 43, JUMP  = 44, SLTI   = 45,
-    MFLO      = 46,  MFHI    = 47,  MULT    = 48,  ANDI  = 49, BLEZ  = 50, BLEZ2  = 51,
-    BGTZ      = 52,  BGTZ2   = 53,
-		INTER_1   = 501, INTER_2 = 502, INTER_3 = 503,
+		RESET     = 00, FETCH   = 01,  DECODE  = 02,
+		ADD       = 10, ADDU    = 11,  AND     = 12,  OR    = 13, NOR   = 14, 
+		JR	   	 = 15, XOR     = 16,  SLTU    = 17,  DIV   = 18, SUB   = 19,
+		ORI       = 20, LUI     = 21,  LW      = 22,  SW    = 23, ADDI  = 24, 
+		SRL   	 = 25, SRA     = 26,  SLL     = 27,  SLT   = 28, XORI  = 29,
+		WB_alu    = 30, WB_imm  = 31,  WB_Din  = 32,  WB_hi = 33, WB_lo = 34, 
+		WB_mem 	 = 35, LW_MA   = 36,  WB_LW   = 37,  JAL   = 38, SLTIU = 39,
+		BEQ       = 40, BEQ2	 	= 41,	 BNE     = 42,  BNE2  = 43, JUMP  = 44, 
+		SLTI   	 = 45, MFLO    = 46,  MFHI    = 47,  MULT  = 48, ANDI  = 49, 
+		BLEZ  	 = 50, BLEZ2   = 51,	 BGTZ    = 52,  BGTZ2 = 53,
+		INTER_1   = 501,INTER_2 = 502, INTER_3 = 503,
 		BREAK     = 510,
 		ILLEGAL_OP= 511;
 	// state register (up to 512 states)
@@ -125,7 +128,7 @@ module MCU(
 			{IM_cs, IM_rd, IM_wr} 										= 3'b0_0_0;
 			{D_En, D_sel, T_sel, HILO_ld, Y_sel} 					= 8'b0_00_0_0_000;
 			FS 																= 5'h15;
-			INT_ACK 															= 1'b0; //set up ALU_out(0x3FC)
+			INT_ACK 															= 1'b0; 
 			{DM_cs, DM_rd, DM_wr} 										= 3'b0_0_0;
          #1 {nsc, nsv, nsn, nsz}								      = 4'b0;
 			state = RESET;
@@ -193,21 +196,21 @@ module MCU(
   						case(IR[5:0])
   							6'h0D  : state = BREAK;
   							6'h20  : state = ADD;
-                6'h22  : state = SUB;
+							6'h22  : state = SUB;
   							6'h08  : state = JR;
 							6'h02  : state = SRL;
 						   6'h03  : state = SRA;
 						   6'h00  : state = SLL;
 						   6'h2A  : state = SLT;
-               6'h10  : state = MFHI;
-               6'h12  : state = MFLO;
-               6'h18  : state = MULT;
-               6'h1A  : state = DIV;
-               6'h24  : state = AND;
-               6'h25  : state = OR;
-               6'h26  : state = XOR;
-               6'h27  : state = NOR;
-               6'h2B  : state = SLTU;
+							6'h10  : state = MFHI;
+							6'h12  : state = MFLO;
+							6'h18  : state = MULT;
+							6'h1A  : state = DIV;
+							6'h24  : state = AND;
+							6'h25  : state = OR;
+							6'h26  : state = XOR;
+							6'h27  : state = NOR;
+							6'h2B  : state = SLTU;
   							default: state = ILLEGAL_OP;
   						endcase
   					end // end of if for R-type format
@@ -217,7 +220,8 @@ module MCU(
 
   						//checks if IR is a BEQ or BNE so instead of loading RT with imm16,
   						//we load it from register file in order to compare in ALU
-  						if (IR[31:26] == 6'h04 || IR[31:26] == 6'h05 || IR[31:26] == 6'h06 || IR[31:26] == 6'h07) begin
+  						if (IR[31:26] == 6'h04 || IR[31:26] == 6'h05 || 
+							 IR[31:26] == 6'h06 || IR[31:26] == 6'h07) begin
   							{PC_sel, PC_ld, PC_inc, IR_ld} 			= 5'b00_0_0_0;
   							{IM_cs, IM_rd, IM_wr} 						= 3'b0_0_0;
   							{D_En, D_sel, T_sel, HILO_ld, Y_sel} 	= 8'b0_00_0_0_000;
@@ -235,14 +239,13 @@ module MCU(
   							{DM_cs, DM_rd, DM_wr} 						= 3'b0_0_0;
   							#1 {nsc, nsv, nsn, nsz}						= {psc, psv, psn, psz};
   						end
-
 						case(IR[31:26])
 							6'h0D  : state = ORI;
 							6'h08  : state = ADDI;
-              6'h0C  : state = ANDI;
+							6'h0C  : state = ANDI;
 							6'h0F  : state = LUI;
-              6'h0E  : state = XORI;
-              6'h0B  : state = SLTIU;
+						   6'h0E  : state = XORI;
+						   6'h0B  : state = SLTIU;
 							6'h2B  : state = SW;
 							6'h04  : state = BEQ;
 							6'h05  : state = BNE;
@@ -250,8 +253,8 @@ module MCU(
 						   6'h0A  : state = SLTI;
 						   6'h23  : state = LW;
 						   6'h03  : state = JAL;
-               6'h06  : state = BLEZ;
-               6'h07  : state = BGTZ;
+							6'h06  : state = BLEZ;
+							6'h07  : state = BGTZ;
 							default: state = ILLEGAL_OP;
 						endcase
 					end // end of else for I/J -type formats
@@ -261,7 +264,7 @@ module MCU(
         */
 				ADD:
 				begin
-					@(negedge sys_clk)
+					 @(negedge sys_clk)
 					// control word assignments: ALU_out <- RS($rs) + RT($rt)
 					{PC_sel, PC_ld, PC_inc, IR_ld}			 	= 5'b00_0_0_0;
 					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
@@ -276,6 +279,7 @@ module MCU(
 				ADDI:
 				begin
 					@(negedge sys_clk)
+					// control word assignments: ALU_out <- RS($rs) + RT(se16)
 					{PC_sel, PC_ld, PC_inc, IR_ld}			 	= 5'b00_0_0_0;
 					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
 					{D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b0_00_0_0_000;
@@ -286,44 +290,42 @@ module MCU(
 					state = WB_imm;
 				end
 
-        SUB:
-				begin
-					@(negedge sys_clk)
-					// control word assignments: ALU_out <- RS($rs) - RT($rt)
-					{PC_sel, PC_ld, PC_inc, IR_ld}			 	= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b0_00_0_0_000;
-					FS 													= 5'h3;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					#1 {nsc, nsv, nsn, nsz}							= {C, V, N, Z};
-					state = WB_alu;
-				end
+			   SUB:
+			   begin
+				   @(negedge sys_clk)
+				   // control word assignments: ALU_out <- RS($rs) - RT($rt)
+				   {PC_sel, PC_ld, PC_inc, IR_ld}			 	= 5'b00_0_0_0;
+				   {IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
+				   {D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b0_00_0_0_000;
+				   FS 													= 5'h3;
+				   INT_ACK 												= 0;
+				   {DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
+				   #1 {nsc, nsv, nsn, nsz}							= {C, V, N, Z};
+				   state = WB_alu;
+			   end
         /*
         ************************************************************************
         */
-
-				MFHI:
-				begin
-					@(negedge sys_clk)
-					// control word assignments: ALU_out <- RS($rs) + RT($rt)
-					{PC_sel, PC_ld, PC_inc, IR_ld}			 	= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b1_00_0_0_000;
-					FS 													= 5'h0;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					#1 {nsc, nsv, nsn, nsz}							= {psc, psv, psn, psz};
-					state = FETCH;
-				end
+			   MFHI:
+			   begin
+				   @(negedge sys_clk)
+				   // control word assignments: Rd($rd) <- HI
+				   {PC_sel, PC_ld, PC_inc, IR_ld}			 	= 5'b00_0_0_0;
+				   {IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
+				   {D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b1_00_0_0_000;
+				   FS 													= 5'h0;
+			      INT_ACK 												= 0;
+				   {DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
+				   #1 {nsc, nsv, nsn, nsz}							= {psc, psv, psn, psz};
+				   state = FETCH;
+			   end
         /*
         ************************************************************************
         */
-
 				MFLO:
 				begin
 					@(negedge sys_clk)
-					// control word assignments: ALU_out <- LO
+					// control word assignments: Rd($rd) <- LO
 					{PC_sel, PC_ld, PC_inc, IR_ld}			 	= 5'b00_0_0_0;
 					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
 					{D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b1_00_0_0_001;
@@ -336,10 +338,10 @@ module MCU(
         /*
         ************************************************************************
         */
-        MULT:
+				MULT:
 				begin
 					@(negedge sys_clk)
-					// control word assignments: ALU_out <- LO
+					// control word assignments: {HI,LO} <- RS($rs) * RT($rt)
 					{PC_sel, PC_ld, PC_inc, IR_ld}			 	= 5'b00_0_0_0;
 					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
 					{D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b0_00_0_1_000;
@@ -352,10 +354,11 @@ module MCU(
         /*
         ************************************************************************
         */
-        DIV:
+				DIV:
 				begin
 					@(negedge sys_clk)
-					// control word assignments: ALU_out <- LO
+					// control word assignments: {HI,LO} <- {RS($rs) % RT($rt), 
+					//													  RS($rs) / RT($rt)}
 					{PC_sel, PC_ld, PC_inc, IR_ld}			 	= 5'b00_0_0_0;
 					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
 					{D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b0_00_0_1_000;
@@ -368,7 +371,6 @@ module MCU(
         /*
         ************************************************************************
         */
-
 				ORI:
 				begin
 					@(negedge sys_clk)
@@ -385,7 +387,6 @@ module MCU(
         /*
         ************************************************************************
         */
-
 				XOR:
 				begin
 					@(negedge sys_clk)
@@ -402,10 +403,10 @@ module MCU(
         /*
         ************************************************************************
         */
-        XORI:
+				XORI:
 				begin
 					@(negedge sys_clk)
-          //control word assignment: ALU_out <- RS($rs) ^ S.E(imm16)
+					//control word assignment: ALU_out <- RS($rs) ^ S.E(imm16)
 					{PC_sel, PC_ld, PC_inc, IR_ld}			 	= 5'b00_0_0_0;
 					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
 					{D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b0_00_0_0_000;
@@ -434,7 +435,7 @@ module MCU(
         /*
         ************************************************************************
         */
-        ANDI:
+				ANDI:
 				begin
 					@(negedge sys_clk)
 					// control word assignments: ALU_out <- RS($rs) & S.E.(imm16)
@@ -447,11 +448,9 @@ module MCU(
 					#1 {nsc, nsv, nsn, nsz}							= {psc, psv, N, Z};
 					state = WB_imm;
 				end
-
         /*
         ************************************************************************
         */
-
 				OR:
 				begin
 					@(negedge sys_clk)
@@ -468,11 +467,10 @@ module MCU(
         /*
         ************************************************************************
         */
-
 				NOR:
 				begin
 					@(negedge sys_clk)
-					// control word assignments: ALU_out <- RS($rs) | RT($rt)
+					// control word assignments: ALU_out <- ~(RS($rs) | RT($rt))
 					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
 					{IM_cs, IM_rd, IM_wr}						 	= 3'b0_0_0;
 					{D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b0_00_0_0_000;
@@ -503,7 +501,47 @@ module MCU(
 				begin
 					@(negedge sys_clk)
 					if(psz == 1'b1) begin
-						// control word assignments: PC <- PC + {se_16[15:0], 2'b0}
+						// control word assignments: PC <- PC + {se_16[29:0], 2'b0}
+						{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_1_0_0;
+						{IM_cs, IM_rd, IM_wr}						 	= 3'b0_0_0;
+						{D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b0_00_0_0_000;
+						FS 													= 5'h3;
+						INT_ACK 												= 0;
+						{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
+						#1 {nsc, nsv, nsn, nsz}						   = {psc, psv, psn, psz};
+					end
+					else begin // PC <- PC
+						{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
+						{IM_cs, IM_rd, IM_wr}						 	= 3'b0_0_0;
+						{D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b0_00_0_0_000;
+						FS 													= 5'h0;
+						INT_ACK 												= 0;
+						{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
+						#1 {nsc, nsv, nsn, nsz}							= {psc, psv, psn, psz};
+					end
+				state = FETCH;
+				end
+		  /*
+        ************************************************************************
+        */
+				BNE:
+				begin
+					@(negedge sys_clk)
+					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs, IM_rd, IM_wr}						 	= 3'b0_0_0;
+					{D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b0_00_0_0_000;
+					FS 													= 5'h3; //SUB
+					INT_ACK 												= 0;
+					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
+					#1 {nsc, nsv, nsn, nsz}							= {psc, psv, psn, Z};
+					state = BNE2;
+				end
+
+				BNE2:
+				begin
+					@(negedge sys_clk)
+					if(psz == 1'b0) begin
+						// control word assignments: PC <- PC + {se_16[29:0], 2'b0}
 						{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_1_0_0;
 						{IM_cs, IM_rd, IM_wr}						 	= 3'b0_0_0;
 						{D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b0_00_0_0_000;
@@ -526,47 +564,6 @@ module MCU(
 		  /*
         ************************************************************************
         */
-				BNE:
-				begin
-					@(negedge sys_clk)
-					// control word assignments: ALU_out <- RS($rs) - RT($rt)
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr}						 	= 3'b0_0_0;
-					{D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b0_00_0_0_000;
-					FS 													= 5'h3; //SUB
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					#1 {nsc, nsv, nsn, nsz}							= {psc, psv, psn, Z};
-					state = BNE2;
-				end
-
-				BNE2:
-				begin
-					@(negedge sys_clk)
-					if(psz == 1'b0) begin
-						// control word assignments: PC <- PC + {se_16[15:0], 2'b0}
-						{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_1_0_0;
-						{IM_cs, IM_rd, IM_wr}						 	= 3'b0_0_0;
-						{D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b0_00_0_0_000;
-						FS 													= 5'h3;
-						INT_ACK 												= 0;
-						{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-						#1 {nsc, nsv, nsn, nsz}						      = {psc, psv, psn, psz};
-					end
-					else begin // PC <- PC
-						{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-						{IM_cs, IM_rd, IM_wr}						 	= 3'b0_0_0;
-						{D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b0_00_0_0_000;
-						FS 													= 5'h0;
-						INT_ACK 												= 0;
-						{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-						#1 {nsc, nsv, nsn, nsz}							= {psc, psv, psn, psz};
-					end
-				state = FETCH;
-				end
-        /*
-          ************************************************************************
-          */
   				BLEZ:
   				begin
   					@(negedge sys_clk)
@@ -586,14 +583,14 @@ module MCU(
   					@(negedge sys_clk)
             // if s <= 0, branch
   					if(psz == 1'b1 || psn == 1'b1) begin
-  						// control word assignments: PC <- PC + {se_16[15:0], 2'b0}
+  						// control word assignments: PC <- PC + {se_16[29:0], 2'b0}
   						{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_1_0_0;
   						{IM_cs, IM_rd, IM_wr}						 	= 3'b0_0_0;
   						{D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b0_00_0_0_000;
   						FS 													= 5'h0;
   						INT_ACK 												= 0;
   						{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-  						#1 {nsc, nsv, nsn, nsz}						      = {psc, psv, psn, psz};
+  						#1 {nsc, nsv, nsn, nsz}						   = {psc, psv, psn, psz};
   					end
   					else begin // PC <- PC
   						{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
@@ -609,48 +606,48 @@ module MCU(
         /*
         ************************************************************************
         */
-        BGTZ:
-        begin
-          @(negedge sys_clk)
-          // control word assignments: ALU_out <- RS($rs) - RT($rt)
-          {PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-          {IM_cs, IM_rd, IM_wr}						 	= 3'b0_0_0;
-          {D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b0_00_0_0_000;
-          FS 													= 5'h3; //SUB
-          INT_ACK 												= 0;
-          {DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-          #1 {nsc, nsv, nsn, nsz}							= {psc, psv, N, Z};
-          state = BGTZ2;
-        end
+				BGTZ:
+			   begin
+					@(negedge sys_clk)
+					// control word assignments: ALU_out <- RS($rs) - RT($rt)
+					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs, IM_rd, IM_wr}						 	= 3'b0_0_0;
+					{D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b0_00_0_0_000;
+					FS 													= 5'h3; //SUB
+					INT_ACK 												= 0;
+					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
+					#1 {nsc, nsv, nsn, nsz}							= {psc, psv, N, Z};
+					state = BGTZ2;
+				end
 
-        BGTZ2:
-        begin
-          @(negedge sys_clk)
-          // if s >= 0, branch
-          if(psz == 1'b1 || psn == 1'b0) begin
-            // control word assignments: PC <- PC + {se_16[15:0], 2'b0}
-            {PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_1_0_0;
-            {IM_cs, IM_rd, IM_wr}						 	= 3'b0_0_0;
-            {D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b0_00_0_0_000;
-            FS 													= 5'h0;
-            INT_ACK 												= 0;
-            {DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-            #1 {nsc, nsv, nsn, nsz}						      = {psc, psv, psn, psz};
-          end
-          else begin // PC <- PC
-            {PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-            {IM_cs, IM_rd, IM_wr}						 	= 3'b0_0_0;
-            {D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b0_00_0_0_000;
-            FS 													= 5'h0;
-            INT_ACK 												= 0;
-            {DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-            #1 {nsc, nsv, nsn, nsz}							= {psc, psv, psn, psz};
-          end
-        state = FETCH;
-        end
-      /*
-      ************************************************************************
-      */
+			   BGTZ2:
+			   begin
+				   @(negedge sys_clk)
+				   // if s >= 0, branch
+						if(psz == 1'b1 || psn == 1'b0) begin
+						// control word assignments: PC <- PC + {se_16[29:0], 2'b0}
+						{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_1_0_0;
+						{IM_cs, IM_rd, IM_wr}						 	= 3'b0_0_0;
+						{D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b0_00_0_0_000;
+						FS 													= 5'h0;
+						INT_ACK 												= 0;
+						{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
+						#1 {nsc, nsv, nsn, nsz}						   = {psc, psv, psn, psz};
+					end
+					else begin // PC <- PC
+						{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
+						{IM_cs, IM_rd, IM_wr}						 	= 3'b0_0_0;
+						{D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b0_00_0_0_000;
+						FS 													= 5'h0;
+						INT_ACK 												= 0;
+						{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
+						#1 {nsc, nsv, nsn, nsz}							= {psc, psv, psn, psz};
+			      end
+			  state = FETCH;
+			  end
+        /*
+        ************************************************************************
+        */
 				JR:
 				begin
 					@(negedge sys_clk)
@@ -718,7 +715,7 @@ module MCU(
 				LW_MA:
 				begin
 					@(negedge sys_clk)
-					// control word assignments: ALU_out <- RS($rs) + RT(SE_16), RT <- $rt
+					// control word assignments: Din <- DM[ALU_out]
 					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
 					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
 					{D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b0_00_0_0_010;
@@ -735,7 +732,7 @@ module MCU(
 				SLL:
 				begin
 					@(negedge sys_clk)
-					// control word assignments:
+					// control word assignments: ALU_out <- RS($rs) << 1
 					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
 					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
 					{D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b0_00_0_0_000;
@@ -751,7 +748,7 @@ module MCU(
 				SRL:
 				begin
 					@(negedge sys_clk)
-					// control word assignments:
+					// control word assignments: ALU_out <- RS($rs) >> 1
 					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
 					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
 					{D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b0_00_0_0_000;
@@ -764,10 +761,10 @@ module MCU(
         /*
         ************************************************************************
         */
-        SRA:
+				SRA:
 				begin
 					@(negedge sys_clk)
-					// control word assignments:
+					// control word assignments: ALU_out <- RS($rs) >>> 1
 					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
 					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
 					{D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b0_00_0_0_000;
@@ -777,14 +774,13 @@ module MCU(
 					#1 {nsc, nsv, nsn, nsz}							= {C, psv, N, Z};
 					state = WB_alu;
 				end
-
         /*
         ************************************************************************
         */
-        SLT:
+				SLT:
 				begin
 					@(negedge sys_clk)
-					// control word assignments:
+					// control word assignments: ALU_out <- if (RS < RT) 1 else 0
 					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
 					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
 					{D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b0_00_0_0_000;
@@ -794,14 +790,13 @@ module MCU(
 					#1 {nsc, nsv, nsn, nsz}							= {psc, psv, psn, Z};
 					state = WB_alu;
 				end
-
         /*
         ************************************************************************
         */
-        SLTI:
+				SLTI:
 				begin
 					@(negedge sys_clk)
-					// control word assignments:
+					// control word assignments: ALU_out <- if (RS < RT(se16))) 1 else 0
 					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
 					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
 					{D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b0_00_0_0_000;
@@ -811,14 +806,13 @@ module MCU(
 					#1 {nsc, nsv, nsn, nsz}							= {psc, psv, psn, Z};
 					state = WB_imm;
 				end
-
         /*
         ************************************************************************
         */
-        SLTU:
+				SLTU:
 				begin
 					@(negedge sys_clk)
-					// control word assignments:
+					// control word assignments: ALU_out <- if (RS < RT)) 1 else 0
 					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
 					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
 					{D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b0_00_0_0_000;
@@ -831,10 +825,10 @@ module MCU(
         /*
         ************************************************************************
         */
-        SLTIU:
+				SLTIU:
 				begin
 					@(negedge sys_clk)
-					// control word assignments:
+					// control word assignments: ALU_out <- if (RS < RT(se16))) 1 else 0
 					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
 					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
 					{D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b0_00_0_0_000;
@@ -850,7 +844,7 @@ module MCU(
 				JUMP:
 				begin
 					@(negedge sys_clk)
-					// control word assignments:
+					// control word assignments: PC <- {PC[31:28], IR[25:0], 2'b0}
 					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b01_1_0_0;
 					{IM_cs, IM_rd, IM_wr}						 	= 3'b0_0_0;
 					{D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b0_00_0_0_000;
@@ -867,7 +861,8 @@ module MCU(
 				JAL:
 				begin
 					@(negedge sys_clk)
-					// control word assignments:
+					// control word assignments: PC <- {PC[31:28], IR[25:0], 2'b0}
+					//                           R31<- PC
 					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b01_1_0_0;
 					{IM_cs, IM_rd, IM_wr}						 	= 3'b0_0_0;
 					{D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b1_10_0_0_100;
@@ -888,7 +883,7 @@ module MCU(
 					FS 													= 5'h0;
 					INT_ACK 												= 0;
 					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					#1 {nsc, nsv, nsn, nsz}							= {psc, psv, psn, psz}; //not sure if this is correct for WB_ALU from T-TYPES
+					#1 {nsc, nsv, nsn, nsz}							= {psc, psv, psn, psz};
 					state = FETCH;
 				end
         /*
@@ -929,7 +924,7 @@ module MCU(
 				WB_LW:
 				begin
 					@(negedge sys_clk)
-					// control word assignments: M[ ALU_out($rs + SE_16)] <- RT($rt)
+					// control word assignments: RT <- Din
 					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
 					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
 					{D_En, D_sel, T_sel, HILO_ld, Y_sel} 		= 8'b1_01_0_0_011;
@@ -959,12 +954,15 @@ module MCU(
 					Reg_Dump; // task to output MIPS Register file
 					$display(" ");
 
-          for (i=12'h0C0; i<12'h100; i=i+4) begin
-            @(negedge sys_clk)
-            #1 $display("time=%t M[%h] = %h %h %h %h",
-  					$time, i, MIPS_TB.DM.data_mem[i],MIPS_TB.DM.data_mem[i+1],MIPS_TB.DM.data_mem[i+2],MIPS_TB.DM.data_mem[i+3]);
-          end
-          $finish;
+					for (i=12'h0C0; i<12'h100; i=i+4) begin
+					@(negedge sys_clk)
+					#1 $display("time=%t M[%h] = %h %h %h %h",
+						$time, i, MIPS_TB.DM.data_mem[i],
+									 MIPS_TB.DM.data_mem[i+1],
+									 MIPS_TB.DM.data_mem[i+2],
+									 MIPS_TB.DM.data_mem[i+3]);
+					end
+				$finish;
 				end
         /*
         ************************************************************************

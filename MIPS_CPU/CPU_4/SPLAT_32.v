@@ -1,16 +1,17 @@
 `timescale 1ns / 1ps
 /****************************** C E C S  4 4 0 ******************************
  *
- * File Name:  ALU_32.v
- * Project:    CECS 440 Lab 3
- * Designer:   Peter Huynh
- * Email:      peterhuynh75@gmail.com
+ * File Name:  SPLAT_32.v
+ * Project:    CECS 440 Senior Project Design
+ * Designer:   Peter Huynh, Joseph Almeida
+ * Email:      peterhuynh75@gmail.com, josephnalmeida@gmail.com
  * Rev. No.:   Version 1.0
- * Rev. Date:  September 6th, 2018
+ * Rev. Date:  November 24th, 2018
  *
- * Purpose:
+ * Purpose:    The SPLAT module purpose is to replicate the elements of a
+ *             register and output it evenly.
  *
- * Notes:
+ * Notes:      Utilizes the replication operator to copy the elements.
  *
 ****************************************************************************/
 module SPLAT_32(
