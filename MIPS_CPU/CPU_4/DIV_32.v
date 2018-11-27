@@ -2,7 +2,7 @@
 /****************************** C E C S  4 4 0 ******************************
  * 
  * File Name:  DIV_32.v
- * Project:    CECS 440 Lab 3
+ * Project:    CECS 440 Senior Project Design
  * Designer:   Peter Huynh
  * Email:      peterhuynh75@gmail.com
  * Rev. No.:   Version 1.0

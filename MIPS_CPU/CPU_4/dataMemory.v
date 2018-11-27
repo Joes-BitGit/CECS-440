@@ -8,8 +8,8 @@
  * Rev. No.:   Version 1.0
  * Rev. Date:  October 5, 2018
  *
- * Purpose: 4K X 8 Data Memory that is byte addressable
- *				in big endinan format.
+ * Purpose: 	4K X 8 Data Memory that is byte addressable
+ *					in big endinan format.
  *
  * Notes:
  *
@@ -37,7 +37,7 @@ module dataMemory(
 												  data_mem[Address+1],
 												  data_mem[Address+2],
 												  data_mem[Address+3]}:
-					                32'hz				    ;
+												  32'hz				    ;
 
 
 endmodule

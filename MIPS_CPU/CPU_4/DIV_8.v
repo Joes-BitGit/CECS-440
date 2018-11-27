@@ -1,17 +1,16 @@
 `timescale 1ns / 1ps
 /****************************** C E C S  4 4 0 ******************************
  *
- * File Name:  MPY_32.v
- * Project:    CECS 440 Lab 3
- * Designer:   Peter Huynh
+ * File Name:  DIV_8.v
+ * Project:    CECS 440 Senior Project Design
+ * Designer:   Peter Huynh, Joseph Almeida
  * Email:      peterhuynh75@gmail.com
+ *					josephnalmeida@gmail.com
  * Rev. No.:   Version 1.0
- * Rev. Date:  September 6th, 2018
+ * Rev. Date:  November 24th, 2018
  *
- * Purpose:	This module takes care of the multiply operation for the ALU. The
- * 			inputs are 32-bit S and T, and 5 bit FS (function select). The
- * 			outputs are 32-bit Y_hi and Y_lo which are concatenated together
- * 			for the product, as well as the (N)negative and (Z)zero flags.
+ * Purpose:		This module takes care of the divide operation for the Vector
+ *					ALU. The outputs will be 8-bits VY_lo and VY_hi.
  *
  * Notes:
  *
