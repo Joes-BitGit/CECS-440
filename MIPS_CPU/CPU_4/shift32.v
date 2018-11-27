@@ -1,20 +1,19 @@
 `timescale 1ns / 1ps
 /****************************** C E C S  4 4 0 ******************************
  *
- * File Name:  MIPS_32.v
- * Project:    CECS 440 Lab 3
- * Designer:   Peter Huynh
+ * File Name:  shift32.v
+ * Project:    CECS 440 Senior Project Design
+ * Designer:   Peter Huynh, Joseph Almeida
  * Email:      peterhuynh75@gmail.com
+ *					josephnalmeida@gmail.com
  * Rev. No.:   Version 1.0
- * Rev. Date:  September 8th, 2018
+ * Rev. Date:  November 24th, 2018
  *
- * Purpose:	This module contains the majority of the ALU operations excluding
- * 			multiply and divide. The inputs of this module are the 32-bit
- * 			sources S and T, as well as the carry flags N(negative), Z(zero),
- * 			V(overflow), and C(carry).
+ * Purpose:    The barrel shifter takes care of the shift operations for the
+ *             ALU. It takes in a shamt input that will control how much to
+ *             shift the values by.
  *
- * Notes: 	ADDU, SUBU and SLTU are unsigned operations, and the rest are
- *		    	signed operations.
+ * Notes:
  *
 ****************************************************************************/
 
@@ -25,11 +24,10 @@ module shift32(
   output reg C, V, N, Z,
   output reg [31:0] Y_lo
   );
-  
-  parameter SLL = 5'h0C, 
-			   SRL = 5'h0D, 
-			   SRA = 5'h0E;
 
+  parameter SLL = 5'h0C,
+			   SRL = 5'h0D,
+			   SRA = 5'h0E;
 
   always @ (*) begin
     case (stype)
@@ -149,7 +147,5 @@ module shift32(
   		if (Y_lo == 32'b0) Z = 1'b1;
   		else Z = 1'b0;
 
-
     end // end Combo
 endmodule
-

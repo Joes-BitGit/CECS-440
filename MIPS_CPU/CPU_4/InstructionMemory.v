@@ -2,7 +2,7 @@
 /****************************** C E C S  4 4 0 ******************************
  *
  * File Name:  InstructionMemory.v
- * Project:    Lab_Assignment_5
+ * Project:    CECS 440 Senior Project Design
  * Designer:   Peter Huynh
  * Email:      peterhuynh75@gmail.com
  * Rev. No.:   Version 1.0

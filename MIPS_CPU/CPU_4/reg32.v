@@ -1,8 +1,8 @@
 `timescale 1ns / 1ps
 /****************************** C E C S  4 4 0 ******************************
  * 
- * File Name:  Integer_Datapath.v
- * Project:    Lab_Assignment_4
+ * File Name:  reg32.v
+ * Project:    CECS 440 Senior Project Design
  * Designer:   Joseph Almeida
  * Email:      Josephnalmeida@gmail.com
  * Rev. No.:   Version 1.0
@@ -24,6 +24,5 @@ module reg32(
 		if (reset) Q <= 0;
 		else Q <= D;
 	end
-
 
 endmodule

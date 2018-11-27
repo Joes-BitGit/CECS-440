@@ -2,16 +2,16 @@
 /****************************** C E C S  4 4 0 ******************************
  *
  * File Name:  MCU.v
- * Project:    Lab_Assignment_6
+ * Project:    CECS 440 Senior Project Design
  * Designer:   Joseph Almeida, Peter Huynh, R. W. Allison
  * Email:      josephnalmeida@gmail.com, peterhuynh75@gmail.com,
  * 				rob.allison@csulb.edu
  * Rev. No.:   Version 1.0
- * Rev. Date:  October 22, 2018
+ * Rev. Date:  November 24th, 2018
  *
  * Purpose:    A state machine implementing the MIPS Control Unit (MCU)
- *					for the major cycles of fetch, execture and some MIPS
- *					instruction from memoru, inclding checking for interrupts.
+ *					for the major cycles of fetch, decode, execute and some MIPS
+ *					instruction from memory, inclding checking for interrupts.
  *
  * Notes:
  *
@@ -45,14 +45,13 @@ module MCU(
     output reg io_cs,
     output reg io_rd,
     output reg io_wr,
-    output reg psc, psv, psn, psz, // present state flag registers
+    output reg psc, psv, psn, psz,
     output reg S_sel,
 	 output reg VHILO_ld
     );
 
 	 integer i;
-   reg psi;
-    // reg psi, psc, psv, psn, psz; // present state flag registers
+	 reg psi;
 	 reg nsi, nsc, nsv, nsn, nsz; //next state flag registers
 
 	//**************************
@@ -65,16 +64,19 @@ module MCU(
 			for (i=0; i<16; i=i+1) begin
 				@(negedge sys_clk) begin
 				//Deassert everything and dump MIPS register
-				 {PC_sel, PC_ld, PC_inc, IR_ld} 		  	= 5'b00_0_0_0;
-				 {IM_cs, IM_rd, IM_wr} 			  		  	= 3'b0_0_0;
-				 {D_En, D_sel, T_sel, S_sel,   HILO_ld, Y_sel} 	= 10'b0_00_00_0_0_000;
-				 flag_ld											= 1'b0;
-				 FS 											  	= 5'h0;
-				 INT_ACK 									  	= 1'b0;
-				 {DM_cs, DM_rd, DM_wr} 					  	= 3'b0_0_0;
-				 {io_cs, io_rd, io_wr}               	= 3'b0_0_0;
-				 #1 $display("t=%t  Contents=%h $r=%d || Contents=%h $r=%d" ,
-					 $time, MIPS_TB.CPU.IDP.RF_32.data[i], i[4:0], MIPS_TB.CPU.IDP.RF_32.data[i+16], (i[4:0]+ 5'd16));
+				{PC_sel,PC_ld,PC_inc,IR_ld} 		  		= 5'b00_0_0_0;
+				{IM_cs,IM_rd,IM_wr} 			  		  		= 3'b0_0_0;
+				{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+				flag_ld											= 1'b0;
+				FS 											  	= 5'h0;
+				INT_ACK 									  		= 1'b0;
+				{DM_cs,DM_rd,DM_wr} 					  		= 3'b0_0_0;
+				{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+				VHILO_ld                               = 1'b0;
+				{nsi,nsc,nsv,nsn,nsz}						= 5'b0;
+				#1 $display("t=%t  Contents=%h $r=%d || Contents=%h $r=%d" ,
+					$time, MIPS_TB.CPU.IDP.RF_32.data[i], 	   i[4:0], 
+							 MIPS_TB.CPU.IDP.RF_32.data[i+16], (i[4:0]+ 5'd16));
 				end
 			end //end for loop
 		end //end begin
@@ -85,40 +87,43 @@ module MCU(
 			$display("PC and IR DUMP");
 				@(negedge sys_clk) begin
 				//Deassert everything and dump MIPS register
-				 {PC_sel, PC_ld, PC_inc, IR_ld} 			= 5'b00_0_0_0;
-				 {IM_cs, IM_rd, IM_wr} 						= 3'b0_0_0;
-				 {D_En, D_sel, T_sel, S_sel,   HILO_ld, Y_sel} 	= 10'b0_00_00_0_0_000;
-				 flag_ld											= 1'b0;
-				 FS 												= 5'h0;
-				 INT_ACK 										= 1'b0;
-				 {DM_cs, DM_rd, DM_wr} 						= 3'b0_0_0;
-				 {io_cs, io_rd, io_wr}               	= 3'b0_0_0;
-				 #1 $display("t=%t  PC=%h || IR=%h" ,
-					 $time, MIPS_TB.CPU.IU.PC.PC_out, MIPS_TB.CPU.IU.IR.IR_out);
+				{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+				{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+				{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+				flag_ld											= 1'b0;
+				FS 												= 5'h0;
+				INT_ACK 											= 1'b0;
+				{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+				{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+				VHILO_ld                               = 1'b0;
+				{nsi,nsc,nsv,nsn,nsz}						= 5'b0;
+				#1 $display("t=%t  PC=%h || IR=%h" ,
+					$time, MIPS_TB.CPU.IU.PC.PC_out, MIPS_TB.CPU.IU.IR.IR_out);
 				end
 		end //end begin
 	endtask
 
 	// state assignments
 	parameter
-		RESET     = 00,  FETCH    = 01,  DECODE  = 02,
-		ADD       = 10,  ADDU     = 11,  AND     = 12,  OR     = 13, NOR       = 14, JR	  = 15,
-		XOR       = 16,  SLTU     = 17,  DIV     = 18,  SUB    = 19, ORI       = 20, LUI    = 21,
-		LW        = 22,  SW       = 23,  ADDI    = 24,  SRL    = 25, SRA       = 26, SLL    = 27,
-		SLT       = 28,  XORI     = 29,  WB_alu  = 30,  WB_imm = 31, WB_Din    = 32, WB_hi  = 33,
-      WB_lo     = 34,  WB_mem   = 35,  LW_MA   = 36,  WB_LW  = 37, JAL       = 38, SLTIU  = 39,
-		BEQ       = 40,  BEQ2	  = 41,  BNE   	 = 42,  BNE2   = 43, JUMP      = 44, SLTI   = 45,
-		MFLO      = 46,  MFHI     = 47,  MULT    = 48,  ANDI   = 49, BLEZ      = 50, BLEZ2  = 51,
-		BGTZ      = 52,  BGTZ2    = 53,  SETIE   = 54,  OUTPUT = 55, OUTPUT_MA = 56, INPUT  = 57,
-		INPUT_MA  = 58,  WB_INPUT = 59,
-    VADD      = 300, VSUB      = 301, VMULT  = 302, VDIV  = 303, VMHI  = 304, VMLO  = 305,
-    VMULE     = 306, VMULO   = 307, VAND = 308, VOR = 309, VXOR = 310, VCMPEQ = 311,
-    VMRGLO   = 312, VMRGHI    = 313, VSPLAT = 314, VLW = 315, VLW_MA = 316, VWB_LW = 317,
-    VWB_alu   = 320, VSW = 321, VWB_mem = 322,
-    RETI_1   = 401, RETI_2  = 402, RETI_3 = 403, RETI_4   = 404, RETI_5  = 405, RETI_6  = 406,
-    RETI_7   = 407,
-		INTER_1   = 501, INTER_2  = 502, INTER_3 = 503, INTER_4   = 504, INTER_5  = 505, INTER_6 = 506,
-    INTER_7   = 507, INTER_8  = 508,
+		RESET     = 00, FETCH     = 01, DECODE  = 02,
+		ADD       = 10, ADDU      = 11, AND     = 12, OR      = 13, NOR      = 14, 
+		JR	  		 = 15, XOR       = 16, SLTU    = 17, DIV     = 18, SUB      = 19, 
+		ORI       = 20, LUI       = 21, LW      = 22, SW      = 23, ADDI     = 24,  
+		SRL    	 = 25, SRA       = 26, SLL     = 27, SLT     = 28, XORI     = 29,  
+		WB_alu  	 = 30, WB_imm    = 31, WB_Din  = 32, WB_hi   = 33, WB_lo    = 34,  
+		WB_mem    = 35, LW_MA     = 36, WB_LW   = 37, JAL     = 38, SLTIU    = 39,
+		BEQ       = 40, BEQ2	     = 41, BNE   	 = 42, BNE2    = 43, JUMP     = 44, 
+		SLTI   	 = 45, MFLO      = 46, MFHI    = 47, MULT    = 48, ANDI     = 49, 
+		BLEZ      = 50, BLEZ2     = 51, BGTZ    = 52, BGTZ2   = 53, SETIE    = 54,  
+		OUTPUT 	 = 55, OUTPUT_MA = 56, INPUT   = 57, INPUT_MA= 58, WB_INPUT = 59,
+		VADD      = 300,VSUB      = 301,VMULT   = 302,VDIV    = 303,VMHI     = 304, 
+		VMLO  	 = 305,VMULE     = 306,VMULO   = 307,VAND    = 308,VOR      = 309, 
+		VXOR 		 = 310,VCMPEQ    = 311,VMRGLO  = 312,VMRGHI  = 313,VSPLAT   = 314, 
+		VWB_alu   = 320,
+		RETI_1    = 401,RETI_2    = 402,RETI_3  = 403,RETI_4  = 404,RETI_5   = 405, 
+		RETI_6  	 = 406,RETI_7    = 407,
+		INTER_1   = 501,INTER_2   = 502,INTER_3 = 503,INTER_4 = 504,INTER_5  = 505, 
+		INTER_6 	 = 506,INTER_7   = 507,INTER_8 = 508,
 		BREAK     = 510,
 		ILLEGAL_OP= 511;
 	// state register (up to 512 states)
@@ -127,9 +132,9 @@ module MCU(
 	//FLAG REGISTERS
 	always @(posedge sys_clk, posedge reset) begin
 		if (reset)
-			{psi, psc, psv, psn, psz} = 5'b0;
+			{psi,psc,psv,psn,psz}= 5'b0;
 		else
-			{psi, psc, psv, psn, psz} = {nsi, nsc, nsv, nsn, nsz};
+			{psi,psc,psv,psn,psz}= {nsi,nsc,nsv,nsn,nsz};
 	end
 
 	/************************************************
@@ -139,17 +144,16 @@ module MCU(
 		if (reset)
 		begin
 			//*** control word assignments for the reset condtion ***
-			{PC_sel, PC_ld, PC_inc, IR_ld} 							= 5'b00_0_0_0;
-			{IM_cs, IM_rd, IM_wr} 										= 3'b0_0_0;
-			{D_En, D_sel, T_sel, S_sel,   HILO_ld, Y_sel} 					= 10'b0_00_00_0_0_000;
-			flag_ld															= 1'b0;
-			FS 																= 5'h15;
-			INT_ACK 															= 1'b0; //set up ALU_out(0x3FC)
-			{DM_cs, DM_rd, DM_wr} 										= 3'b0_0_0;
-			{io_cs, io_rd, io_wr}               					= 3'b0_0_0;
-
-			VHILO_ld                                      = 1'b0;
-         #1 {nsi, nsc, nsv, nsn, nsz}								= 5'b0;
+			{PC_sel,PC_ld,PC_inc,IR_ld} 							= 5'b00_0_0_0;
+			{IM_cs,IM_rd,IM_wr} 										= 3'b0_0_0;
+			{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} 			= 10'b0_00_00_0_0_000;
+			flag_ld														= 1'b0;
+			FS 															= 5'h15;
+			INT_ACK 														= 1'b0; 
+			{DM_cs,DM_rd,DM_wr} 										= 3'b0_0_0;
+			{io_cs,io_rd,io_wr}               					= 3'b0_0_0;
+			VHILO_ld                                      	= 1'b0;
+         #1 {nsi,nsc,nsv,nsn,nsz}								= 5'b0;
 			state = RESET;
 		end
 		else
@@ -159,31 +163,30 @@ module MCU(
 					if (psi == 1'b1 & INT_ACK == 0 & INTR == 1)
 					begin	// *** new interrupt pending; prepare for ISR ***
 						// control word assignments for "deasserting" everything
-						{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-						{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-						{D_En, D_sel, T_sel, S_sel,   HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-						flag_ld												= 1'b0;
-						FS 													= 5'h0;
-						{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-						{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-						#1 {nsi, nsc, nsv, nsn, nsz}				   = {psi, psc, psv, psn, psz};
+						{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+						{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+						{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+						flag_ld											= 1'b0;
+						FS 												= 5'h0;
+						{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+						{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+						#1 {nsi,nsc,nsv,nsn,nsz}				   = {psi,psc,psv,psn,psz};
 						state = INTER_1;
 					end
 					else
 					begin // *** no new interrupt pending; fetch an instruction
 					if (psi == 1'b0 | INTR == 0 | (INT_ACK == 1 & INTR == 0))
 						// control word assignments for IR <- iM[PC]; PC <- PC+4
-						{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_1_1;
-						{IM_cs, IM_rd, IM_wr} 							= 3'b1_1_0;
-						{D_En, D_sel, T_sel, S_sel,   HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-						flag_ld												= 1'b0;
-						FS 													= 5'h0;
-						INT_ACK 												= 1'b0;
-						{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-						{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-
-						VHILO_ld                              = 1'b0;
-						#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, psn, psz};
+						{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_1_1;
+						{IM_cs,IM_rd,IM_wr} 							= 3'b1_1_0;
+						{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+						flag_ld											= 1'b0;
+						FS 												= 5'h0;
+						INT_ACK 											= 1'b0;
+						{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+						{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+						VHILO_ld                               = 1'b0;
+						#1 {nsi,nsc,nsv,nsn,nsz}					= {psi,psc,psv,psn,psz};
 						state = DECODE;
 					end
          /*
@@ -193,43 +196,41 @@ module MCU(
 				begin
 					@(negedge sys_clk)
 						// control word assignments for $sp <- ALU_out(32'h3FC)
-						{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-						{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-						{D_En, D_sel, T_sel, S_sel,   HILO_ld, Y_sel} 		= 10'b1_11_00_0_0_010;
-						flag_ld												= 1'b0;
-						FS 													= 5'h0;
-						INT_ACK 												= 1'b0;
-						{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-						{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-
-            VHILO_ld                              = 1'b0;
-						#1 {nsi, nsc, nsv, nsn, nsz}					= 5'b0;
+						{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+						{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+						{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b1_11_00_0_0_010;
+						flag_ld											= 1'b0;
+						FS 												= 5'h0;
+						INT_ACK 											= 1'b0;
+						{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+						{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+						VHILO_ld                               = 1'b0;
+						#1 {nsi,nsc,nsv,nsn,nsz}					= 5'b0;
 						state = FETCH;
 				end
-/******************************************************************************************************************************/
-/******************************************************************************************************************************/
-/******************************************************************************************************************************/
+
 				DECODE:
 				begin
 					@(negedge sys_clk)
-            // it is an R_type format
+					// it is an R_type format
   					if(IR[31:26] == 6'h0) begin
   						// control word assignments: RS <- $rs, RT <- $rt (default)
-  						{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-  						{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-  						{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-						  flag_ld												= 1'b0;
-  						FS 													= 5'h0;
-  						INT_ACK 												= 0;
-  						{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-						  {io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-  						#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, psn, psz};
+  						{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+  						{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+  						{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+						flag_ld											= 1'b0;
+  						FS 												= 5'h0;
+  						INT_ACK 											= 0;
+  						{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+						{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+						VHILO_ld                               = 1'b0;
+  						#1 {nsi,nsc,nsv,nsn,nsz}					= {psi,psc,psv,psn,psz};
   						case(IR[5:0])
   							6'h0D  : state = BREAK;
   							6'h20  : state = ADD;
-							  6'h22  : state = SUB;
+							6'h22  : state = SUB;
   							6'h08  : state = JR;
-							  6'h02  : state = SRL;
+							6'h02  : state = SRL;
 						   6'h03  : state = SRA;
 						   6'h00  : state = SLL;
 						   6'h2A  : state = SLT;
@@ -246,97 +247,91 @@ module MCU(
   							default: state = ILLEGAL_OP;
   						endcase
   					end // end of if for R-type format
-/******************************************************************************************************************************/
-/******************************************************************************************************************************/
-/******************************************************************************************************************************/
-            //it is an enhancement key
+
+					//it is an enhancement instruction
   					else if (IR[31:26] == 6'h1F) begin
-              // control word assignments: RS <- $rs, RT <- $rt (default)
-              {PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-              {IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-              {D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-              flag_ld												= 1'b0;
-              FS 													= 5'h0;
-              INT_ACK 												= 0;
-              {DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-              {io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-              VHILO_ld                              = 1'b0;
-              case(IR[5:0])
-                6'h0  : state = VADD;
-					 6'h1  : state = VSUB;
-           6'h2  : state = VMULT;
-           6'h3  : state = VDIV;
-           6'h4  : state = VMHI;
-           6'h5  : state = VMLO;
-           6'h6  : state = VMULE;
-           6'h7  : state = VMULO;
-           6'h8  : state = VAND;
-           6'h9  : state = VOR;
-           6'hA  : state = VXOR;
-           6'hB  : state = VCMPEQ;
-           6'hC  : state = VMRGLO;
-           6'hD  : state = VMRGHI;
-           6'hE  : state = VSPLAT;
-           6'hF  : state = VLW;
-           6'h10 : state = VSW;
-                default: state = ILLEGAL_OP;
-              endcase
-            end //end "e_key"
-/******************************************************************************************************************************/
-/******************************************************************************************************************************/
-/******************************************************************************************************************************/
+						// control word assignments: RS <- $rs, RT <- $rt (default)
+					  {PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					  {IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					  {D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} 	= 10'b0_00_00_0_0_000;
+					  flag_ld											= 1'b0;
+					  FS 													= 5'h0;
+					  INT_ACK 											= 0;
+					  {DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					  {io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					  VHILO_ld                              	= 1'b0;
+					  #1 {nsi,nsc,nsv,nsn,nsz}						= {psi,psc,psv,psn,psz};
+					  case(IR[5:0])
+						   6'h0  : state = VADD;
+						   6'h1  : state = VSUB;
+						   6'h2  : state = VMULT;
+						   6'h3  : state = VDIV;
+						   6'h4  : state = VMHI;
+						   6'h5  : state = VMLO;
+						   6'h6  : state = VMULE;
+						   6'h7  : state = VMULO;
+						   6'h8  : state = VAND;
+						   6'h9  : state = VOR;
+						   6'hA  : state = VXOR;
+						   6'hB  : state = VCMPEQ;
+						   6'hC  : state = VMRGLO;
+						   6'hD  : state = VMRGHI;
+						   6'hE  : state = VSPLAT;
+                     default: state = ILLEGAL_OP;
+                 endcase
+               end //end "e_key"
+
             // it is an I-type or J-type format
-            else begin
+					else begin
   						// control word assignments: RS <- $rs, RT <- DT(se_16)
   						//checks if IR is a BEQ/BNE
-  						if (IR[31:26] == 6'h04 || IR[31:26] == 6'h05 || IR[31:26] == 6'h06 || IR[31:26] == 6'h07) begin
-  							{PC_sel, PC_ld, PC_inc, IR_ld} 			= 5'b00_0_0_0;
-  							{IM_cs, IM_rd, IM_wr} 						= 3'b0_0_0;
-  							{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 	= 10'b0_00_00_0_0_000;
-							  flag_ld											= 1'b0;
+  						if (IR[31:26] == 6'h04 || IR[31:26] == 6'h05 || 
+							 IR[31:26] == 6'h06 || IR[31:26] == 6'h07) begin
+  							{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+  							{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+  							{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+							flag_ld											= 1'b0;
   							FS 												= 5'h0;
   							INT_ACK 											= 0;
-  							{DM_cs, DM_rd, DM_wr} 						= 3'b0_0_0;
-							{io_cs, io_rd, io_wr}               	= 3'b0_0_0;
-  							#1 {nsi, nsc, nsv, nsn, nsz}				= {psi, psc, psv, psn, psz};
+  							{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+							{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+							VHILO_ld                              	= 1'b0;
+  							#1 {nsi,nsc,nsv,nsn,nsz}					= {psi,psc,psv,psn,psz};
   						end
               // Else it is an I or J type
   						else begin
-  							{PC_sel, PC_ld, PC_inc, IR_ld} 			= 5'b00_0_0_0;
-  							{IM_cs, IM_rd, IM_wr} 						= 3'b0_0_0;
-  							{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 	= 10'b0_00_01_0_0_000;
+  							{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+  							{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+  							{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_01_0_0_000;
   							flag_ld											= 1'b0;
-							  FS 												= 5'h0;
+							FS 												= 5'h0;
   							INT_ACK 											= 0;
-  							{DM_cs, DM_rd, DM_wr} 						= 3'b0_0_0;
-							  {io_cs, io_rd, io_wr}               	= 3'b0_0_0;
-  							#1 {nsi, nsc, nsv, nsn, nsz}				= {psi, psc, psv, psn, psz};
-  					end
+  							{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+							{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+							VHILO_ld                             	= 1'b0;
+  							#1 {nsi,nsc,nsv,nsn,nsz}					= {psi,psc,psv,psn,psz};
+						end
 						case(IR[31:26])
 							6'h0D  : state = ORI;
 							6'h08  : state = ADDI;
 							6'h0C  : state = ANDI;
 							6'h0F  : state = LUI;
-						  6'h0E  : state = XORI;
-						  6'h0B  : state = SLTIU;
+						   6'h0E  : state = XORI;
+						   6'h0B  : state = SLTIU;
 							6'h2B  : state = SW;
 							6'h04  : state = BEQ;
 							6'h05  : state = BNE;
-						  6'h02  : state = JUMP;
-						  6'h0A  : state = SLTI;
-						  6'h23  : state = LW;
-						  6'h03  : state = JAL;
+						   6'h02  : state = JUMP;
+						   6'h0A  : state = SLTI;
+						   6'h23  : state = LW;
+						   6'h03  : state = JAL;
 							6'h06  : state = BLEZ;
 							6'h07  : state = BGTZ;
 							6'h1D  : state = OUTPUT;
 							6'h1C  : state = INPUT;
-              6'h1E  : state = RETI_1;
+							6'h1E  : state = RETI_1;
 							default: state = ILLEGAL_OP;
 						endcase
-/******************************************************************************************************************************/
-/******************************************************************************************************************************/
-/******************************************************************************************************************************/
-
 					end // end of else for I/J -type formats
 				end// end of DECODE
         /*
@@ -346,176 +341,184 @@ module MCU(
 				begin
 					@(negedge sys_clk)
 					// control word assignments: ALU_out <- RS($rs) + RT($rt)
-					{PC_sel, PC_ld, PC_inc, IR_ld}			 	= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-					flag_ld												= 1'b0;
-					FS 													= 5'h2;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, C, V, N, Z};
+					{PC_sel,PC_ld,PC_inc,IR_ld}			 	= 5'b00_0_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h2;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi, C, V, N, Z};
 					state = WB_alu;
 				end
 
 				ADDI:
 				begin
 					@(negedge sys_clk)
-					{PC_sel, PC_ld, PC_inc, IR_ld}			 	= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-					flag_ld												= 1'b0;
-					FS 													= 5'h2;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, C, V, N, Z};
+					// control word assignments: ALU_out <- RS($rs) + RT(se16)
+					{PC_sel,PC_ld,PC_inc,IR_ld}			 	= 5'b00_0_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h2;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi, C, V, N, Z};
 					state = WB_imm;
 				end
 
-        SUB:
+				SUB:
 				begin
 					@(negedge sys_clk)
 					// control word assignments: ALU_out <- RS($rs) - RT($rt)
-					{PC_sel, PC_ld, PC_inc, IR_ld}			 	= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-					flag_ld												= 1'b0;
-					FS 													= 5'h3;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, C, V, N, Z};
+					{PC_sel,PC_ld,PC_inc,IR_ld}			 	= 5'b00_0_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h3;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi, C, V, N, Z};
 					state = WB_alu;
 				end
         /*
         ************************************************************************
         */
-
 				MFHI:
 				begin
 					@(negedge sys_clk)
-					// control word assignments: ALU_out <- RS($rs) + RT($rt)
-					{PC_sel, PC_ld, PC_inc, IR_ld}			 	= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b1_00_00_0_0_000;
-					flag_ld												= 1'b0;
-					FS 													= 5'h0;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, psn, psz};
+					// control word assignments: Rd($rd) <- HI
+					{PC_sel,PC_ld,PC_inc,IR_ld}			 	= 5'b00_0_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b1_00_00_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h0;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi,psc,psv,psn,psz};
 					state = FETCH;
 				end
         /*
         ************************************************************************
         */
-
 				MFLO:
 				begin
 					@(negedge sys_clk)
-					// control word assignments: ALU_out <- LO
-					{PC_sel, PC_ld, PC_inc, IR_ld}			 	= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b1_00_00_0_0_001;
-					flag_ld												= 1'b0;
-					FS 													= 5'h0;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, psn, psz};
+					// control word assignments: Rd($rd) <- LO
+					{PC_sel,PC_ld,PC_inc,IR_ld}			 	= 5'b00_0_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b1_00_00_0_0_001;
+					flag_ld											= 1'b0;
+					FS 												= 5'h0;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi,psc,psv,psn,psz};
 					state = FETCH;
 				end
         /*
         ************************************************************************
         */
-        MULT:
+				MULT:
 				begin
 					@(negedge sys_clk)
-					// control word assignments: ALU_out <- LO
-					{PC_sel, PC_ld, PC_inc, IR_ld}			 	= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_1_000;
-					flag_ld												= 1'b0;
-					FS 													= 5'h1E;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, N, Z};
+					// control word assignments: {HI,LO} <- RS($rs) * RT($rt)
+					{PC_sel,PC_ld,PC_inc,IR_ld}			 	= 5'b00_0_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_1_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h1E;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi, psc, psv, N, Z};
 					state = FETCH;
 				end
         /*
         ************************************************************************
         */
-        DIV:
+				DIV:
 				begin
 					@(negedge sys_clk)
-					// control word assignments: ALU_out <- LO
-					{PC_sel, PC_ld, PC_inc, IR_ld}			 	= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_1_000;
-					flag_ld												= 1'b0;
-					FS 													= 5'h1F;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, N, Z};
+					// control word assignments: {HI,LO} <- {RS($rs) % RT($rt), 
+					//													  RS($rs) / RT($rt)}
+					{PC_sel,PC_ld,PC_inc,IR_ld}			 	= 5'b00_0_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_1_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h1F;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi, psc, psv, N, Z};
 					state = FETCH;
 				end
         /*
         ************************************************************************
         */
-
 				ORI:
 				begin
 					@(negedge sys_clk)
 					// control word assignments: ALU_out <- RS($rs) | {RT[15:0]}
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr}						 	= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-					flag_ld												= 1'b0;
-					FS 													= 5'h17;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, psn, psz};
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs, IM_rd, IM_wr}						= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h17;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi,psc,psv,psn,psz};
 					state = WB_imm;
 				end
         /*
         ************************************************************************
         */
-
 				XOR:
 				begin
 					@(negedge sys_clk)
 					// control word assignments: ALU_out <- RS($rs) ^ RT($rt)
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr}						 	= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-					flag_ld												= 1'b0;
-					FS 													= 5'h0A;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, N, Z};
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs, IM_rd, IM_wr}						= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h0A;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi, psc, psv, N, Z};
 					state = WB_alu;
 				end
         /*
         ************************************************************************
         */
-        XORI:
+				XORI:
 				begin
 					@(negedge sys_clk)
-          //control word assignment: ALU_out <- RS($rs) ^ S.E(imm16)
-					{PC_sel, PC_ld, PC_inc, IR_ld}			 	= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-					flag_ld												= 1'b0;
-					FS 													= 5'h19;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, N, Z};
+					//control word assignment: ALU_out <- RS($rs) ^ S.E(imm16)
+					{PC_sel,PC_ld,PC_inc,IR_ld}			 	= 5'b00_0_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h19;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi, psc, psv, N, Z};
 					state = WB_imm;
 				end
         /*
@@ -525,72 +528,74 @@ module MCU(
 				begin
 					@(negedge sys_clk)
 					// control word assignments: ALU_out <- RS($rs) & RT($rt)
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr}						 	= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-					flag_ld												= 1'b0;
-					FS 													= 5'h08;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, N, Z};
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs, IM_rd, IM_wr}						= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h08;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi, psc, psv, N, Z};
 					state = WB_alu;
 				end
         /*
         ************************************************************************
         */
-        ANDI:
+				ANDI:
 				begin
 					@(negedge sys_clk)
 					// control word assignments: ALU_out <- RS($rs) & S.E.(imm16)
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr}						 	= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-					flag_ld												= 1'b0;
-					FS 													= 5'h16;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, N, Z};
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs, IM_rd, IM_wr}						= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h16;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi, psc, psv, N, Z};
 					state = WB_imm;
 				end
 
         /*
         ************************************************************************
         */
-
 				OR:
 				begin
 					@(negedge sys_clk)
 					// control word assignments: ALU_out <- RS($rs) | RT($rt)
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr}						 	= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-					flag_ld												= 1'b0;
-					FS 													= 5'h09;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, N, Z};
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs, IM_rd, IM_wr}						= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h09;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi, psc, psv, N, Z};
 					state = WB_alu;
 				end
         /*
         ************************************************************************
         */
-
 				NOR:
 				begin
 					@(negedge sys_clk)
-					// control word assignments: ALU_out <- RS($rs) | RT($rt)
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr}						 	= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-					flag_ld												= 1'b0;
-					FS 													= 5'h0B;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, N, Z};
+					// control word assignments: ALU_out <- ~(RS($rs) | RT($rt))
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs, IM_rd, IM_wr}						= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h0B;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi, psc, psv, N, Z};
 					state = WB_alu;
 				end
         /*
@@ -600,15 +605,16 @@ module MCU(
 				begin
 					@(negedge sys_clk)
 					// control word assignments: ALU_out <- RS($rs) - RT($rt)
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr}						 	= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-					flag_ld												= 1'b0;
-					FS 													= 5'h3; //SUB
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, psn, Z};
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs, IM_rd, IM_wr}						= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h3; //SUB
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi, psc, psv, psn, Z};
 					state = BEQ2;
 				end
 
@@ -616,27 +622,29 @@ module MCU(
 				begin
 					@(negedge sys_clk)
 					if(psz == 1'b1) begin
-						// control word assignments: PC <- PC + {se_16[15:0], 2'b0}
-						{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_1_0_0;
-						{IM_cs, IM_rd, IM_wr}						 	= 3'b0_0_0;
-						{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-            flag_ld												= 1'b0;
-						FS 													= 5'h3;
-						INT_ACK 												= 0;
-						{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-						{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-						#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, psn, psz};
+					// control word assignments: PC <- PC + {se_16[29:0], 2'b0}
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_1_0_0;
+					{IM_cs, IM_rd, IM_wr}						= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h3;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi,psc,psv,psn,psz};
 					end
 					else begin // PC <- PC
-						{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-						{IM_cs, IM_rd, IM_wr}						 	= 3'b0_0_0;
-						{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-            flag_ld												= 1'b0;
-						FS 													= 5'h0;
-						INT_ACK 												= 0;
-						{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-						{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-						#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, psn, psz};
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs, IM_rd, IM_wr}						= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h0;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi,psc,psv,psn,psz};
 					end
 				state = FETCH;
 				end
@@ -647,15 +655,16 @@ module MCU(
 				begin
 					@(negedge sys_clk)
 					// control word assignments: ALU_out <- RS($rs) - RT($rt)
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr}						 	= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-          flag_ld												= 1'b0;
-					FS 													= 5'h3; //SUB
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, psn, Z};
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs, IM_rd, IM_wr}						= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h3; //SUB
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi, psc, psv, psn, Z};
 					state = BNE2;
 				end
 
@@ -663,27 +672,29 @@ module MCU(
 				begin
 					@(negedge sys_clk)
 					if(psz == 1'b0) begin
-						// control word assignments: PC <- PC + {se_16[15:0], 2'b0}
-						{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_1_0_0;
-						{IM_cs, IM_rd, IM_wr}						 	= 3'b0_0_0;
-						{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-            flag_ld												= 1'b0;
-						FS 													= 5'h3;
-						INT_ACK 												= 0;
-						{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-						{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-						#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, psn, psz};
+					// control word assignments: PC <- PC + {se_16[29:0], 2'b0}
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_1_0_0;
+					{IM_cs, IM_rd, IM_wr}						= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h3;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi,psc,psv,psn,psz};
 					end
 					else begin // PC <- PC
-						{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-						{IM_cs, IM_rd, IM_wr}						 	= 3'b0_0_0;
-						{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-            flag_ld												= 1'b0;
-						FS 													= 5'h0;
-						INT_ACK 												= 0;
-						{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-						{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-						#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, psn, psz};
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs, IM_rd, IM_wr}						= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h0;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi,psc,psv,psn,psz};
 					end
 				state = FETCH;
 				end
@@ -694,95 +705,101 @@ module MCU(
   				begin
   					@(negedge sys_clk)
   					// control word assignments: ALU_out <- RS($rs) - RT($rt)
-  					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-  					{IM_cs, IM_rd, IM_wr}						 	= 3'b0_0_0;
-  					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-            flag_ld												= 1'b0;
-  					FS 													= 5'h3; //SUB
-  					INT_ACK 												= 0;
-  					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-  					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, N, Z};
+  					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+  					{IM_cs, IM_rd, IM_wr}						= 3'b0_0_0;
+  					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+						flag_ld										= 1'b0;
+  					FS 												= 5'h3; //SUB
+  					INT_ACK 											= 0;
+  					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+  					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi, psc, psv, N, Z};
   					state = BLEZ2;
   				end
 
   				BLEZ2:
   				begin
   					@(negedge sys_clk)
-            // if s <= 0, branch
+					// if s <= 0, branch
   					if(psz == 1'b1 || psn == 1'b1) begin
-  						// control word assignments: PC <- PC + {se_16[15:0], 2'b0}
-  						{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_1_0_0;
-  						{IM_cs, IM_rd, IM_wr}						 	= 3'b0_0_0;
-  						{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-              flag_ld												= 1'b0;
-  						FS 													= 5'h0;
-  						INT_ACK 												= 0;
-  						{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-						{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-  						#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, psn, psz};
+					// control word assignments: PC <- PC + {se_16[29:0], 2'b0}
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_1_0_0;
+					{IM_cs, IM_rd, IM_wr}						= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h0;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi,psc,psv,psn,psz};
   					end
   					else begin // PC <- PC
-  						{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-  						{IM_cs, IM_rd, IM_wr}						 	= 3'b0_0_0;
-  						{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-              flag_ld												= 1'b0;
-  						FS 													= 5'h0;
-  						INT_ACK 												= 0;
-  						{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-						{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-  						#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, psn, psz};
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs, IM_rd, IM_wr}						= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h0;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi,psc,psv,psn,psz};
   					end
   				state = FETCH;
   				end
         /*
         ************************************************************************
         */
-        BGTZ:
-        begin
-          @(negedge sys_clk)
-          // control word assignments: ALU_out <- RS($rs) - RT($rt)
-          {PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-          {IM_cs, IM_rd, IM_wr}						 	= 3'b0_0_0;
-          {D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-          flag_ld												= 1'b0;
-          FS 													= 5'h3; //SUB
-          INT_ACK 											= 0;
-          {DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-			 {io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-          #1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, N, Z};
-          state = BGTZ2;
-        end
+				BGTZ:
+				begin
+					@(negedge sys_clk)
+					// control word assignments: ALU_out <- RS($rs) - RT($rt)
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs, IM_rd, IM_wr}						= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h3; //SUB
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi, psc, psv, N, Z};
+					state = BGTZ2;
+				end
 
-        BGTZ2:
-        begin
-          @(negedge sys_clk)
-          // if s >= 0, branch
-          if(psz == 1'b1 || psn == 1'b0) begin
-            // control word assignments: PC <- PC + {se_16[15:0], 2'b0}
-            {PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_1_0_0;
-            {IM_cs, IM_rd, IM_wr}						 	= 3'b0_0_0;
-            {D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-            flag_ld												= 1'b0;
-            FS 													= 5'h0;
-            INT_ACK 												= 0;
-            {DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-				{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-            #1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, psn, psz};
-          end
-          else begin // PC <- PC
-            {PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-            {IM_cs, IM_rd, IM_wr}						 	= 3'b0_0_0;
-            {D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-            flag_ld												= 1'b0;
-            FS 													= 5'h0;
-            INT_ACK 												= 0;
-            {DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-				{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-            #1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, psn, psz};
-          end
-        state = FETCH;
-        end
+			  BGTZ2:
+			  begin
+				 @(negedge sys_clk)
+				 // if s >= 0, branch
+				 if(psz == 1'b1 || psn == 1'b0) begin
+				 // control word assignments: PC <- PC + {se_16[29:0], 2'b0}
+				 {PC_sel,PC_ld,PC_inc,IR_ld} 				   = 5'b00_1_0_0;
+				 {IM_cs, IM_rd, IM_wr}						   = 3'b0_0_0;
+				 {D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel}   = 10'b0_00_00_0_0_000;
+				 flag_ld											   = 1'b0;
+				 FS 													= 5'h0;
+				 INT_ACK 											= 0;
+				 {DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+				 {io_cs,io_rd,io_wr}               			= 3'b0_0_0;
+				 VHILO_ld                              	= 1'b0;
+				 #1 {nsi,nsc,nsv,nsn,nsz}						= {psi,psc,psv,psn,psz};
+				 end
+				 else begin // PC <- PC
+				 {PC_sel,PC_ld,PC_inc,IR_ld} 					= 5'b00_0_0_0;
+				 {IM_cs, IM_rd, IM_wr}						 	= 3'b0_0_0;
+				 {D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} 	= 10'b0_00_00_0_0_000;
+				 flag_ld												= 1'b0;
+				 FS 													= 5'h0;
+				 INT_ACK 											= 0;
+				 {DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+				 {io_cs,io_rd,io_wr}               			= 3'b0_0_0;
+				 VHILO_ld                              	= 1'b0;
+				 #1 {nsi,nsc,nsv,nsn,nsz}						= {psi,psc,psv,psn,psz};
+				 end
+			  state = FETCH;
+			  end
       /*
       ************************************************************************
       */
@@ -790,15 +807,16 @@ module MCU(
 				begin
 					@(negedge sys_clk)
 					// control word assignments: PC <- RS($rs)
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b11_1_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-          flag_ld												= 1'b0;
-					FS 													= 5'h00;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, psn, psz};
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b11_1_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h00;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi,psc,psv,psn,psz};
 					state = FETCH;
 				end
         /*
@@ -808,15 +826,16 @@ module MCU(
 				begin
 					@(negedge sys_clk)
 					// control word assignments: ALU_out <- {RT[15:0], 16'h0}
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-          flag_ld												= 1'b0;
-					FS 													= 5'h18;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, psn, psz};
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h18;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi,psc,psv,psn,psz};
 					state = WB_imm;
 				end
         /*
@@ -825,16 +844,17 @@ module MCU(
 				SW:
 				begin
 					@(negedge sys_clk)
-					// control word assignments: ALU_out <- RS($rs) + RT(SE_16), RT <- $rt
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-          flag_ld												= 1'b0;
-					FS 													= 5'h02;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, psn, psz};
+					// control word assignments: ALU_out <- RS($rs) + RT(SE_16),RT <- $rt
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h02;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi,psc,psv,psn,psz};
 					state = WB_mem;
 				end
         /*
@@ -843,16 +863,17 @@ module MCU(
 				OUTPUT:
 				begin
 					@(negedge sys_clk)
-					// control word assignments: ALU_out <- RS($rs) + RT(SE_16), RT <- $rt
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-          flag_ld												= 1'b0;
-					FS 													= 5'h02;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, psn, psz};
+					// control word assignments: ALU_out <- RS($rs) + RT(SE_16),RT <- $rt
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h02;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi,psc,psv,psn,psz};
 					state = OUTPUT_MA;
 				end
         /*
@@ -861,16 +882,17 @@ module MCU(
 				OUTPUT_MA:
 				begin
 					@(negedge sys_clk)
-					// control word assignments: ALU_out <- RS($rs) + RT(SE_16), RT <- $rt
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_010;
-          flag_ld												= 1'b0;
-					FS 													= 5'h0;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b1_0_1;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, psn, psz};
+					// control word assignments: IOM <- ALU_out,IOM <- RT
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_010;
+					flag_ld											= 1'b0;
+					FS 												= 5'h0;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b1_0_1;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi,psc,psv,psn,psz};
 					state = FETCH;
 				end
 		  /*
@@ -879,16 +901,17 @@ module MCU(
 				INPUT:
 				begin
 					@(negedge sys_clk)
-					// control word assignments: ALU_out <- RS($rs) + RT(SE_16), RT <- $rt
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-          flag_ld												= 1'b0;
-					FS 													= 5'h02;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}							= 3'b0_0_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}				   = {psi, psc, psv, psn, psz};
+					// control word assignments: ALU_out <- RS($rs) + RT(SE_16),RT <- $rt
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h02;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}							= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}				   = {psi,psc,psv,psn,psz};
 					state = INPUT_MA;
 				end
 		  /*
@@ -897,16 +920,17 @@ module MCU(
 				INPUT_MA:
 				begin
 					@(negedge sys_clk)
-					// control word assignments: ALU_out <- RS($rs) + RT(SE_16), RT <- $rt
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_010;
-          flag_ld												= 1'b0;
-					FS 													= 5'h00;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}							= 3'b1_1_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, psn, psz};
+					// control word assignments: Din <- IOM[ALU_out]
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_010;
+					flag_ld											= 1'b0;
+					FS 												= 5'h00;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}							= 3'b1_1_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi,psc,psv,psn,psz};
 					state = WB_INPUT;
 				end
 
@@ -916,16 +940,17 @@ module MCU(
 				WB_INPUT:
 				begin
 					@(negedge sys_clk)
-					// control word assignments: M[ ALU_out($rs + SE_16)] <- RT($rt)
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b1_01_00_0_0_011;
-          flag_ld												= 1'b0;
-					FS 													= 5'h00;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, psn, psz};
+					// control word assignments: RT($rt) <- Din 
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b1_01_00_0_0_011;
+					flag_ld											= 1'b0;
+					FS 												= 5'h00;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi,psc,psv,psn,psz};
 					state = FETCH;
 				end
         /*
@@ -934,16 +959,17 @@ module MCU(
 				LW:
 				begin
 					@(negedge sys_clk)
-					// control word assignments: ALU_out <- RS($rs) + RT(SE_16), RT <- $rt
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-          flag_ld												= 1'b0;
-					FS 													= 5'h02;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, psn, psz};
+					// control word assignments: ALU_out <- RS($rs) + RT(SE_16),RT <- $rt
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h02;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi,psc,psv,psn,psz};
 					state = LW_MA;
 				end
         /*
@@ -952,16 +978,17 @@ module MCU(
 				LW_MA:
 				begin
 					@(negedge sys_clk)
-					// control word assignments: ALU_out <- RS($rs) + RT(SE_16), RT <- $rt
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_010;
-          flag_ld												= 1'b0;
-					FS 													= 5'h00;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b1_1_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, psn, psz};
+					// control word assignments: Din <- DM[ALU_out]
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_010;
+					flag_ld											= 1'b0;
+					FS 												= 5'h00;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b1_1_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi,psc,psv,psn,psz};
 					state = WB_LW;
 				end
 
@@ -971,16 +998,17 @@ module MCU(
 				SLL:
 				begin
 					@(negedge sys_clk)
-					// control word assignments:
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-          flag_ld												= 1'b0;
-					FS 													= 5'h0C;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, C, psv, N, Z};
+					// control word assignments: ALU_out <- RS($rs) << shamt
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h0C;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi, C, psv, N, Z};
 					state = WB_alu;
 				end
 		    /*
@@ -989,128 +1017,134 @@ module MCU(
 				SRL:
 				begin
 					@(negedge sys_clk)
-					// control word assignments:
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-          flag_ld												= 1'b0;
-					FS 													= 5'h0D;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, C, psv, N, Z};
+					// control word assignments: ALU_out <- RS($rs) >> shamt
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h0D;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi, C, psv, N, Z};
 					state = WB_alu;
 				end
         /*
         ************************************************************************
         */
-        SRA:
+				SRA:
 				begin
 					@(negedge sys_clk)
-					// control word assignments:
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-          flag_ld												= 1'b0;
-					FS 													= 5'h0E;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, C, psv, N, Z};
-					state = WB_alu;
-				end
-
-        /*
-        ************************************************************************
-        */
-        SLT:
-				begin
-					@(negedge sys_clk)
-					// control word assignments:
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-          flag_ld												= 1'b0;
-					FS 													= 5'h06;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, psn, Z};
+					// control word assignments: ALU_out <- RS($rs) >>> shamt
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h0E;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi, C, psv, N, Z};
 					state = WB_alu;
 				end
 
         /*
         ************************************************************************
         */
-        SLTI:
+				SLT:
 				begin
 					@(negedge sys_clk)
-					// control word assignments:
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-          flag_ld												= 1'b0;
-					FS 													= 5'h06;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, psn, Z};
+					// control word assignments: ALU_out <- if (RS < RT) 1 else 0
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h06;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi, psc, psv, psn, Z};
+					state = WB_alu;
+				end
+
+        /*
+        ************************************************************************
+        */
+				SLTI:
+				begin
+					@(negedge sys_clk)
+					// control word assignments: ALU_out <- if (RS < RT(se16))) 1 else 0
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h06;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi, psc, psv, psn, Z};
 					state = WB_imm;
 				end
 
         /*
         ************************************************************************
         */
-        SLTU:
+				SLTU:
 				begin
 					@(negedge sys_clk)
-					// control word assignments:
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-          flag_ld												= 1'b0;
-					FS 													= 5'h07;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, psn, Z};
+					// control word assignments: ALU_out <- if (RS < RT)) 1 else 0
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h07;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi, psc, psv, psn, Z};
 					state = WB_alu;
 				end
         /*
         ************************************************************************
         */
-        SLTIU:
+				SLTIU:
 				begin
 					@(negedge sys_clk)
-					// control word assignments:
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-          flag_ld												= 1'b0;
-					FS 													= 5'h07;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, psn, Z};
+					// control word assignments: ALU_out <- if (RS < RT(se16))) 1 else 0
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h07;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi, psc, psv, psn, Z};
 					state = WB_imm;
 				end
         /*
         ************************************************************************
         */
-        SETIE:
+				SETIE:
 				begin
 					@(negedge sys_clk)
-          //main job is to set interrupt bit
-					// control word assignments: ALU_out <- RS($rs) + RT($rt)
-					{PC_sel, PC_ld, PC_inc, IR_ld}			 	= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-          flag_ld												= 1'b0;
-					FS 													= 5'h0;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {1'b1, psc, psv, psn, psz};
+					//main job is to set interrupt bit
+					{PC_sel,PC_ld,PC_inc,IR_ld}			 	= 5'b00_0_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h0;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {1'b1, psc, psv, psn, psz};
 					state = FETCH;
 				end
         /*
@@ -1119,16 +1153,17 @@ module MCU(
 				JUMP:
 				begin
 					@(negedge sys_clk)
-					// control word assignments:
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b01_1_0_0;
-					{IM_cs, IM_rd, IM_wr}						 	= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-          flag_ld												= 1'b0;
-					FS 													= 5'h00;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, psn, psz};
+					// control word assignments: PC <- {PC[31:28], IR[25:0], 2'b0}
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b01_1_0_0;
+					{IM_cs, IM_rd, IM_wr}						= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h00;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi,psc,psv,psn,psz};
 					state = FETCH;
 				end
 
@@ -1138,16 +1173,18 @@ module MCU(
 				JAL:
 				begin
 					@(negedge sys_clk)
-					// control word assignments:
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b01_1_0_0;
-					{IM_cs, IM_rd, IM_wr}						 	= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b1_10_00_0_0_100;
-          flag_ld												= 1'b0;
-					FS 													= 5'h00;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, psn, psz};
+					// control word assignments: PC <- {PC[31:28], IR[25:0], 2'b0}
+					//                           R31<- PC
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b01_1_0_0;
+					{IM_cs, IM_rd, IM_wr}						= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b1_10_00_0_0_100;
+					flag_ld											= 1'b0;
+					FS 												= 5'h00;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi,psc,psv,psn,psz};
 					state = FETCH;
 				end
 
@@ -1155,15 +1192,16 @@ module MCU(
 				begin
 					@(negedge sys_clk)
 					// control word assignments: R[rd] <- ALU_out
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b1_00_00_0_0_010;
-          flag_ld												= 1'b0;
-					FS 													= 5'h0;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, psn, psz};
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b1_00_00_0_0_010;
+					flag_ld											= 1'b0;
+					FS 												= 5'h0;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi,psc,psv,psn,psz};
 					state = FETCH;
 				end
         /*
@@ -1173,15 +1211,16 @@ module MCU(
 				begin
 					@(negedge sys_clk)
 					// control word assignments: R[rt] <- ALU_out
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b1_01_00_0_0_010;
-          flag_ld												= 1'b0;
-					FS 													= 5'h0;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, psn, psz};
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b1_01_00_0_0_010;
+					flag_ld											= 1'b0;
+					FS 												= 5'h0;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi,psc,psv,psn,psz};
 					state = FETCH;
 				end
         /*
@@ -1191,15 +1230,16 @@ module MCU(
 				begin
 					@(negedge sys_clk)
 					// control word assignments: M[ ALU_out($rs + SE_16)] <- RT($rt)
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_010;
-          flag_ld												= 1'b0;
-					FS 													= 5'h00;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b1_0_1;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, psn, psz};
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_010;
+					flag_ld											= 1'b0;
+					FS 												= 5'h00;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b1_0_1;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi,psc,psv,psn,psz};
 					state = FETCH;
 				end
         /*
@@ -1208,16 +1248,17 @@ module MCU(
 				WB_LW:
 				begin
 					@(negedge sys_clk)
-					// control word assignments: M[ ALU_out($rs + SE_16)] <- RT($rt)
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b1_01_00_0_0_011;
-          flag_ld												= 1'b0;
-					FS 													= 5'h00;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, psn, psz};
+					// control word assignments: RT <- Din
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b1_01_00_0_0_011;
+					flag_ld											= 1'b0;
+					FS 												= 5'h00;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi,psc,psv,psn,psz};
 					state = FETCH;
 				end
         /*
@@ -1228,15 +1269,16 @@ module MCU(
 				@(negedge sys_clk)
 				$display("BREAK INSTRUCTION FETCHED %t", $time);
 				// control word assignments for "deasserting" everything
-				{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-				{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-				{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-        flag_ld												= 1'b0;
-				FS 													= 5'h0;
-				INT_ACK 												= 0;
-				{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-				{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-				#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, psn, psz};
+				{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+				{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+				{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+				flag_ld											= 1'b0;
+				FS 												= 5'h0;
+				INT_ACK 											= 0;
+				{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+				{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+				VHILO_ld                              	= 1'b0;
+				#1 {nsi,nsc,nsv,nsn,nsz}					= {psi,psc,psv,psn,psz};
 				$display(" R E G I S T E R ' S  A F T E R  B R E A K ");
 				$display(" ");
 				Reg_Dump; // task to output MIPS Register file
@@ -1246,15 +1288,20 @@ module MCU(
 				for (i=12'h0C0; i<12'h100; i=i+4) begin
 				@(negedge sys_clk)
 				#1 $display("time=%t M[%h] = %h %h %h %h",
-					$time, i, MIPS_TB.DM.data_mem[i],MIPS_TB.DM.data_mem[i+1],MIPS_TB.DM.data_mem[i+2],MIPS_TB.DM.data_mem[i+3]);
+					$time, i, MIPS_TB.DM.data_mem[i],
+								 MIPS_TB.DM.data_mem[i+1],
+								 MIPS_TB.DM.data_mem[i+2],
+								 MIPS_TB.DM.data_mem[i+3]);
 				end
-        $display ("time=%t M[0CC] = %h %h %h %h",$time,MIPS_TB.DM.data_mem[12'h0CC],MIPS_TB.DM.data_mem[12'h0CD],MIPS_TB.DM.data_mem[12'h0CE],MIPS_TB.DM.data_mem[12'h0CF]);
-				$display (" ");
-				$display (" O U T P U T  O F  I/O  M E M O R Y");
+				$display("");
+				$display (" I/O  M E M O R Y  D U M P ");
 				for (i=12'h0C0; i<12'h100; i=i+4) begin
 				@(negedge sys_clk)
 				#1 $display("time=%t M[%h] = %h %h %h %h",
-					$time, i, MIPS_TB.IOM.io_mem[i],MIPS_TB.IOM.io_mem[i+1],MIPS_TB.IOM.io_mem[i+2],MIPS_TB.IOM.io_mem[i+3]);
+					$time, i, MIPS_TB.IOM.io_mem[i],
+								 MIPS_TB.IOM.io_mem[i+1],
+								 MIPS_TB.IOM.io_mem[i+2],
+								 MIPS_TB.IOM.io_mem[i+3]);
 				end
 				$finish;
 				end
@@ -1266,216 +1313,244 @@ module MCU(
 					$display("ILLEGAL OPCODE FETCHED %t", $time);
 					@(negedge sys_clk)
 					// control word assignments for "deasserting" everything
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-          flag_ld												= 1'b0;
-					FS 													= 5'h0;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, psn, psz};
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h0;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi,psc,psv,psn,psz};
 					DUMP_PC_and_IR;
 					Reg_Dump;
 
-          $display (" M E M O R Y  D U M P ");
+				$display (" M E M O R Y  D U M P ");
   				for (i=12'h0C0; i<12'h100; i=i+4) begin
   				@(negedge sys_clk)
   				#1 $display("time=%t M[%h] = %h %h %h %h",
-  					$time, i, MIPS_TB.DM.data_mem[i],MIPS_TB.DM.data_mem[i+1],MIPS_TB.DM.data_mem[i+2],MIPS_TB.DM.data_mem[i+3]);
+  					$time, i, MIPS_TB.DM.data_mem[i],
+								 MIPS_TB.DM.data_mem[i+1],
+								 MIPS_TB.DM.data_mem[i+2],
+								 MIPS_TB.DM.data_mem[i+3]);
   				end
-          $display ("time=%t M[3f0] = %h %h %h %h",$time,MIPS_TB.DM.data_mem[12'h3F0],MIPS_TB.DM.data_mem[12'h3F1],MIPS_TB.DM.data_mem[12'h3F2],MIPS_TB.DM.data_mem[12'h3F3]);
+				
+				$display ("time=%t M[3f0] = %h %h %h %h",
+				$time,MIPS_TB.DM.data_mem[12'h3F0],
+						MIPS_TB.DM.data_mem[12'h3F1],
+						MIPS_TB.DM.data_mem[12'h3F2],
+						MIPS_TB.DM.data_mem[12'h3F3]);
   				$display (" ");
-  				$display (" O U T P U T  O F  I/O  M E M O R Y");
+				
+  				$display (" I/O  M E M O R Y  D U M P ");
   				$display (" ");
   				for (i=12'h0C0; i<12'h100; i=i+4) begin
   				@(negedge sys_clk)
   				#1 $display("time=%t M[%h] = %h %h %h %h",
-  					$time, i, MIPS_TB.IOM.io_mem[i],MIPS_TB.IOM.io_mem[i+1],MIPS_TB.IOM.io_mem[i+2],MIPS_TB.IOM.io_mem[i+3]);
+  					$time, i, MIPS_TB.IOM.io_mem[i],
+								 MIPS_TB.IOM.io_mem[i+1],
+								 MIPS_TB.IOM.io_mem[i+2],
+								 MIPS_TB.IOM.io_mem[i+3]);
   				end
   				$finish;
 				end
         /*
         ************************************************************************
         */
-
-        RETI_1:
+				RETI_1:
 				begin
 					@(negedge sys_clk)
 					// control word assignments: ALU_out <- RS(0x404)
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,   HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-					flag_ld												= 1'b0;//load flags into RT to be put into memory
-					FS 													= 5'h0; //increment to address 400 to save flags
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, psn, psz};
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h0; 
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi,psc,psv,psn,psz};
 					state = RETI_2;
 				end
 
-        RETI_2:
+				RETI_2:
 				begin
 					@(negedge sys_clk)
 					// control word assignments: D_in <- dM[ALU_OUT(0x404)],
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,   HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_010; //Y_sel = 010 to pass to memory address
-					flag_ld												= 1'b0;//load flags into RT to be put into memory
-					FS 													= 5'h00; //decrement to address 400 to pop flags
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b1_1_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, psn, psz};
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_010; 
+					flag_ld											= 1'b0;
+					FS 												= 5'h00; 
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b1_1_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi,psc,psv,psn,psz};
 					state = RETI_3;
 				end
 
-        RETI_3:
+				RETI_3:
 				begin
 					@(negedge sys_clk)
-					// control word assignments: PC <- D_in(dM[0x404]), ALU_OUT <- RS(0x404) - 4
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b10_1_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,   HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_011; //Y_sel = 3 to get D_in into PC
-					flag_ld												= 1'b0;//load flags into RT to be put into memory
-					FS 													= 5'h12;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, psn, psz}; //load flags from stack
+					// control word assignments: 
+					//PC <- D_in(dM[0x404]), 
+					//ALU_OUT <- RS(0x404) - 4
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b10_1_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_011; 
+					flag_ld											= 1'b0;
+					FS 												= 5'h12;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi,psc,psv,psn,psz};
 					state = RETI_4;
 				end
 
-        RETI_4:
+				RETI_4:
 				begin
 					@(negedge sys_clk)
-					// control word assignments: MCU <- dM[ALU_OUT(0x400)], Rd($r29) <- ALU_OUT(0x400), RS <- ALU_OUT(0x400)
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,   HILO_ld, Y_sel} 		= 10'b1_11_00_1_0_010; //Y_sel = 2 to get address of flags to memory
-					flag_ld												= 1'b1;//load flags from memory into present state flags
-					FS 													= 5'h0;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b1_1_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, C, V, N, Z}; //load flags from stack
+					// control word assignments:
+					//MCU <- dM[ALU_OUT(0x400)], 
+					//R29 <- ALU_OUT(0x400), 
+					//RS  <- ALU_OUT(0x400)
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b1_11_00_1_0_010; 
+					flag_ld											= 1'b1;
+					FS 												= 5'h0;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b1_1_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi, C, V, N, Z};
 					state = RETI_5;
 				end
 
-        RETI_5:
+				RETI_5:
 				begin
 					@(negedge sys_clk)
 					// control word assignments: ALU_OUT <- RS(0x400) - 4
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,   HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-					flag_ld												= 1'b0;
-					FS 													= 5'h12; //decrement to address 3FC
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, psn, psz};
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h12; 
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi,psc,psv,psn,psz};
 					state = RETI_6;
 				end
 
-        RETI_6:
-        begin
-          @(negedge sys_clk)
-          // control word assignments: Rd($r29) <- ALU_OUT(0x3FC)
-          {PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-          {IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-          {D_En, D_sel, T_sel, S_sel,   HILO_ld, Y_sel} 		= 10'b1_11_00_0_0_010; //update stack pointer into register 29
-          flag_ld												= 1'b0;
-          FS 													= 5'h0;
-          INT_ACK 												= 0;
-          {DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-          {io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-          #1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, psn, psz};
-          state = FETCH;
-        end
+			   RETI_6:
+			   begin
+				   @(negedge sys_clk)
+					// control word assignments: R29 <- ALU_OUT(0x3FC)
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b1_11_00_0_0_010;
+					flag_ld											= 1'b0;
+					FS 												= 5'h0;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi,psc,psv,psn,psz};
+					state = FETCH;
+			  end
         /*
         ************************************************************************
         */
 				INTER_1:
 				begin
 					@(negedge sys_clk)
-					// control word assignments: ALU_out <- 0x3FC)
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,   HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_100; //D_sel = 10 for register 31 (3FC)
-					flag_ld												= 1'b0;//load flags into RT to be put into memory
-					FS 													= 5'h15; //increment to address 400 to save flags
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, psn, psz};
+					// control word assignments: ALU_out <- 0x3FC
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_100; 
+					flag_ld											= 1'b0;
+					FS 												= 5'h15; 
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi,psc,psv,psn,psz};
 					state = INTER_2;
 				end
-
 
 				INTER_2:
 				begin
 					// control word assignments: RS <- ALU_out(0x3FC)
 					@(negedge sys_clk)
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,   HILO_ld, Y_sel} 		= 10'b0_00_00_1_0_010;
-					flag_ld												= 1'b0;
-          FS 													= 5'h0;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, psn, psz};
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_1_0_010;
+					flag_ld											= 1'b0;
+					FS 												= 5'h0;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi,psc,psv,psn,psz};
 					state = INTER_3;
 				end
 
 				INTER_3:
 				begin
-					// control word assignments: ALU_out <- RS(3FC) + 4, RT <- T_OUT(PSC, PSV, PSN, PSZ)
+					// control word assignments: 
+					//ALU_out <- RS(3FC) + 4, 
+					//RT <- T_OUT(PSC, PSV, PSN, PSZ)
 					@(negedge sys_clk)
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-				{D_En, D_sel, T_sel, S_sel,   HILO_ld, Y_sel} 		= 10'b0_00_10_0_0_000; //RT gets Flags (T_Sel = 1'b0)
-					flag_ld												= 1'b0;
-					FS 													= 5'h11;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, psn, psz};
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_10_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h11;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi,psc,psv,psn,psz};
 					state = INTER_4;
 				end
 
-        INTER_4:
+				INTER_4:
 				begin
 					@(negedge sys_clk)
 					// control word assignments: RS <- ALU_out(0x400)
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,   HILO_ld, Y_sel}		= 10'b1_11_00_1_0_010;
-					flag_ld												= 1'b0;//load flags into RT to be put into memory
-					FS 													= 5'h00;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b1_0_1; //write address to memory with flag contents
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, psn, psz};
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel}	= 10'b1_11_00_1_0_010;
+					flag_ld											= 1'b0;
+					FS 												= 5'h00;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b1_0_1;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi,psc,psv,psn,psz};
 					state = INTER_5;
 				end
-
 
 				INTER_5:
 				begin
 					// control word assignments: ALU_out <- RS+4, RT <- PC_in
 					@(negedge sys_clk)
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,   HILO_ld, Y_sel}			= 10'b0_00_11_0_0_000;
-					flag_ld												= 1'b0;
-					FS 													= 5'h11;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, psn, psz};
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel}	= 10'b0_00_11_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h11;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi,psc,psv,psn,psz};
 					state = INTER_6;
 				end
 
@@ -1483,245 +1558,242 @@ module MCU(
 				begin
 					// control word assignments: D_in <- dM[ALU_OUT], ALU_OUT <- 0x3FC
 					@(negedge sys_clk)
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-				{D_En, D_sel, T_sel, S_sel,   HILO_ld, Y_sel}			= 10'b1_11_00_0_0_010; //need memory to get address (stored in ALU_OUT)
-					flag_ld												= 1'b0;
-					FS 													= 5'h15;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b1_0_1;//write to address 404 memory with PC contents
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, psn, psz};
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel}	= 10'b1_11_00_0_0_010; 
+					flag_ld											= 1'b0;
+					FS 												= 5'h15;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b1_0_1;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi,psc,psv,psn,psz};
 					state = INTER_7;
 				end
 
-
-        INTER_7:
+				INTER_7:
 				begin
 					// Reload PC with addres of ISR; ask the INTR; goto FETCH
 					// control word assignments: PC <- D_in(dM[0x3FC]), INT_ACK <- 1
 					@(negedge sys_clk)
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,   HILO_ld, Y_sel}		= 10'b0_00_00_0_0_010; //PC_in
-					flag_ld												= 1'b0;
-					FS 													= 5'h00;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b1_1_0; //read contents of memory into D_in
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, psn, psz};
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel}	= 10'b0_00_00_0_0_010;
+					flag_ld											= 1'b0;
+					FS 												= 5'h00;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b1_1_0; 
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi,psc,psv,psn,psz};
 					state = INTER_8;
 				end
-        INTER_8:
+				
+				INTER_8:
 				begin
 					// Reload PC with addres of ISR; ask the INTR; goto FETCH
 					// control word assignments: PC <- D_in(dM[0x3FC]), INT_ACK <- 1
 					@(negedge sys_clk)
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b10_1_0_0; //select PC_in and load it
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-						{D_En, D_sel, T_sel, S_sel,   HILO_ld, Y_sel}		= 10'b0_00_00_0_0_011; //PC_in
-					flag_ld												= 1'b0;
-					FS 													= 5'h00;
-					INT_ACK 												= 1;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, psn, psz};
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b10_1_0_0; 
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel}	= 10'b0_00_00_0_0_011; 
+					flag_ld											= 1'b0;
+					FS 												= 5'h00;
+					INT_ACK 											= 1;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                              	= 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi,psc,psv,psn,psz};
 					state = FETCH;
 				end
-/**********************************************************************************************************************
-*************************************************ENHANCED INSTRUCTION *************************************************
-*************************************************ENHANCED INSTRUCTION *************************************************
-/**********************************************************************************************************************/
-        VADD:
+				
+			/********************************************************************
+			 ************************ENHANCED INSTRUCTION************************
+			 ************************ENHANCED INSTRUCTION************************
+			 ********************************************************************/
+				VADD:
 				begin
 					@(negedge sys_clk)
 					// control word assignments: VALU_out <- RS($rs) + RT($rt)
-					{PC_sel, PC_ld, PC_inc, IR_ld}			 	= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-					flag_ld												= 1'b0;
-					FS 													= 5'h0;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					VHILO_ld                              = 1'b0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, 4'b0};
+					{PC_sel,PC_ld,PC_inc,IR_ld}			 	= 5'b00_0_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h0;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                               = 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi, 4'b0};
 					state = VWB_alu;
 				end
 
-		  VSUB:
+				VSUB:
 				begin
 					@(negedge sys_clk)
 					// control word assignments: VALU_out <- RS($rs) - RT($rt)
-					{PC_sel, PC_ld, PC_inc, IR_ld}			 	= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-					flag_ld												= 1'b0;
-					FS 													= 5'h1;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					VHILO_ld                              = 1'b0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, 4'b0};
+					{PC_sel,PC_ld,PC_inc,IR_ld}			 	= 5'b00_0_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h1;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                               = 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi, 4'b0};
 					state = VWB_alu;
 				end
 
-        VWB_alu:
+				VWB_alu:
 				begin
 					@(negedge sys_clk)
 					// control word assignments: R[rd] <- VALU_out
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b1_00_00_0_0_111;
-					flag_ld												= 1'b0;
-					FS 													= 5'h0;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-					VHILO_ld                              = 1'b0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, psc, psv, psn, psz};
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b1_00_00_0_0_111;
+					flag_ld											= 1'b0;
+					FS 												= 5'h0;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                               = 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi,psc,psv,psn,psz};
 					state = FETCH;
 				end
 
-        VMHI:
+				VMHI:
 				begin
 					@(negedge sys_clk)
-					// control word assignments: VALU_out <- HI
-					{PC_sel, PC_ld, PC_inc, IR_ld}			 	= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b1_00_00_0_0_101;
-					flag_ld												= 1'b0;
-					FS 													= 5'h0;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-
-          VHILO_ld                              = 1'b0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, 4'b0};
+					// control word assignments: RD($rd) <- VHI
+					{PC_sel,PC_ld,PC_inc,IR_ld}			 	= 5'b00_0_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b1_00_00_0_0_101;
+					flag_ld											= 1'b0;
+					FS 												= 5'h0;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                               = 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi, 4'b0};
 					state = FETCH;
 				end
 
-        VMLO:
+				VMLO:
 				begin
 					@(negedge sys_clk)
-					// control word assignments: VALU_out <- LO
-					{PC_sel, PC_ld, PC_inc, IR_ld}			 	= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b1_00_00_0_0_110;
-					flag_ld												= 1'b0;
-					FS 													= 5'h0;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-
-          VHILO_ld                              = 1'b0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, 4'b0};
-					state = FETCH;
-				end
-
-        /*
-        ************************************************************************
-        */
-        VMULT:
-				begin
-					@(negedge sys_clk)
-					// control word assignments: VALU_out <- LO
-					{PC_sel, PC_ld, PC_inc, IR_ld}			 	= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-					flag_ld												= 1'b0;
-					FS 													= 5'h02;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-
-          VHILO_ld                              = 1'b1;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, 4'b0};
+					// control word assignments: RD($rd) <- VLO
+					{PC_sel,PC_ld,PC_inc,IR_ld}			 	= 5'b00_0_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b1_00_00_0_0_110;
+					flag_ld											= 1'b0;
+					FS 												= 5'h0;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                               = 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi, 4'b0};
 					state = FETCH;
 				end
 
         /*
         ************************************************************************
         */
-        VMULO:
+				VMULT:
 				begin
 					@(negedge sys_clk)
-					// control word assignments: VALU_out <- LO
-					{PC_sel, PC_ld, PC_inc, IR_ld}			 	= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-					flag_ld												= 1'b0;
-					FS 													= 5'h07;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
+					// control word assignments: {VHI, VLO} <- RS * RT
+					{PC_sel,PC_ld,PC_inc,IR_ld}			 	= 5'b00_0_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h02;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                               = 1'b1;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi, 4'b0};
+					state = FETCH;
+				end
 
-          VHILO_ld                              = 1'b0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, 4'b0};
+        /*
+        ************************************************************************
+        */
+				VMULO:
+				begin
+					@(negedge sys_clk)
+					// control word assignments: VALU_out <- RS * RT
+					{PC_sel,PC_ld,PC_inc,IR_ld}			 	= 5'b00_0_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h07;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                               = 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi, 4'b0};
 					state = VWB_alu;
 				end
 
         /*
         ************************************************************************
         */
-        VMULE:
+				VMULE:
 				begin
 					@(negedge sys_clk)
-					// control word assignments: VALU_out <- LO
-					{PC_sel, PC_ld, PC_inc, IR_ld}			 	= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-					flag_ld												= 1'b0;
-					FS 													= 5'h06;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-
-          VHILO_ld                              = 1'b0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, 4'b0};
+					// control word assignments: VALU_out <- RS * RT
+					{PC_sel,PC_ld,PC_inc,IR_ld}			 	= 5'b00_0_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h06;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                               = 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi, 4'b0};
 					state = VWB_alu;
 				end
         /*
         ************************************************************************
         */
-        VDIV:
+				VDIV:
 				begin
 					@(negedge sys_clk)
-					// control word assignments: VALU_out <- LO
-					{PC_sel, PC_ld, PC_inc, IR_ld}			 	= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-					flag_ld												= 1'b0;
-					FS 													= 5'h03;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-
-          VHILO_ld                              = 1'b1;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, 4'b0};
+					// control word assignments: {VHI, VLO} <- {RS % RT, RS / RT}
+					{PC_sel,PC_ld,PC_inc,IR_ld}			 	= 5'b00_0_0_0;
+					{IM_cs,IM_rd,IM_wr} 							= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h03;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                               = 1'b1;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi, 4'b0};
 					state = FETCH;
 				end
 
         /*
         ************************************************************************
         */
-        VAND:
-        begin
-          @(negedge sys_clk)
-          // control word assignments: ALU_out <- RS($rs) & RT($rt)
-          {PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-          {IM_cs, IM_rd, IM_wr}						 	= 3'b0_0_0;
-          {D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-          flag_ld												= 1'b0;
-          FS 													= 5'h08;
-          INT_ACK 												= 0;
-          {DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-          {io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-
-          VHILO_ld                              = 1'b0;
-          #1 {nsi, nsc, nsv, nsn, nsz}					= {psi, 4'b0};
-          state = VWB_alu;
-        end
+			   VAND:
+			   begin
+				   @(negedge sys_clk)
+					// control word assignments: VALU_out <- RS($rs) & RT($rt)
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs, IM_rd, IM_wr}						= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h08;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                               = 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi, 4'b0};
+					state = VWB_alu;
+			  end
 
         /*
         ************************************************************************
@@ -1730,18 +1802,17 @@ module MCU(
 				VOR:
 				begin
 					@(negedge sys_clk)
-					// control word assignments: ALU_out <- RS($rs) | RT($rt)
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr}						 	= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-					flag_ld												= 1'b0;
-					FS 													= 5'h09;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-
-          VHILO_ld                              = 1'b0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, 4'b0};
+					// control word assignments: VALU_out <- RS($rs) | RT($rt)
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs, IM_rd, IM_wr}						= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h09;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                               = 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi, 4'b0};
 					state = VWB_alu;
 				end
 
@@ -1751,18 +1822,17 @@ module MCU(
 				VXOR:
 				begin
 					@(negedge sys_clk)
-					// control word assignments: ALU_out <- RS($rs) ^ RT($rt)
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr}						 	= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-					flag_ld												= 1'b0;
-					FS 													= 5'h0A;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-
-          VHILO_ld                              = 1'b0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, 4'b0};
+					// control word assignments: VALU_out <- RS($rs) ^ RT($rt)
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs, IM_rd, IM_wr}						= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h0A;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                               = 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi, 4'b0};
 					state = VWB_alu;
 				end
 
@@ -1772,18 +1842,17 @@ module MCU(
 				VCMPEQ:
 				begin
 					@(negedge sys_clk)
-					// control word assignments: ALU_out <- RS($rs) ^ RT($rt)
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr}						 	= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-					flag_ld												= 1'b0;
-					FS 													= 5'h0E;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-
-          VHILO_ld                              = 1'b0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, 4'b0};
+					// control word assignments: VALU_out <- if(RS == RT) 32'hFFFF else 32'h0
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs, IM_rd, IM_wr}						= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h0B;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                               = 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi, 4'b0};
 					state = VWB_alu;
 				end
 
@@ -1793,18 +1862,17 @@ module MCU(
 				VMRGLO:
 				begin
 					@(negedge sys_clk)
-					// control word assignments: ALU_out <- RS($rs) ^ RT($rt)
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr}						 	= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-					flag_ld												= 1'b0;
-					FS 													= 5'h0C;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-
-          VHILO_ld                              = 1'b0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, 4'b0};
+					// control word assignments: VALU_out <- RS[15:0] , RT[15:0]
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs, IM_rd, IM_wr}						= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h0C;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                               = 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi, 4'b0};
 					state = VWB_alu;
 				end
 
@@ -1814,18 +1882,17 @@ module MCU(
 				VMRGHI:
 				begin
 					@(negedge sys_clk)
-					// control word assignments: ALU_out <- RS($rs) ^ RT($rt)
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr}						 	= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-					flag_ld												= 1'b0;
-					FS 													= 5'h0D;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-
-          VHILO_ld                              = 1'b0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, 4'b0};
+					// control word assignments: VALU_out <- RS[31:16] , RT[31:16]
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs, IM_rd, IM_wr}						= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h0D;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                               = 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi, 4'b0};
 					state = VWB_alu;
 				end
         /*
@@ -1834,121 +1901,18 @@ module MCU(
 				VSPLAT:
 				begin
 					@(negedge sys_clk)
-					// control word assignments: VALU_out <- RS($rs) ^ RT($rt)
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr}						 	= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-					flag_ld												= 1'b0;
-					FS 													= 5'h0E;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-
-          VHILO_ld                              = 1'b0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, 4'b0};
+					// control word assignments: VALU_out <- RS[SPLAT]
+					{PC_sel,PC_ld,PC_inc,IR_ld} 				= 5'b00_0_0_0;
+					{IM_cs, IM_rd, IM_wr}						= 3'b0_0_0;
+					{D_En,D_sel,T_sel,S_sel,HILO_ld,Y_sel} = 10'b0_00_00_0_0_000;
+					flag_ld											= 1'b0;
+					FS 												= 5'h0E;
+					INT_ACK 											= 0;
+					{DM_cs,DM_rd,DM_wr} 							= 3'b0_0_0;
+					{io_cs,io_rd,io_wr}               		= 3'b0_0_0;
+					VHILO_ld                               = 1'b0;
+					#1 {nsi,nsc,nsv,nsn,nsz}					= {psi, 4'b0};
 					state = VWB_alu;
 				end
-        /*
-        ************************************************************************
-        */
-        VLW:
-        begin
-          @(negedge sys_clk)
-          // control word assignments: ALU_out <- VRS($rs), VRT <- $rt
-          {PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-          {IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-          {D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-          flag_ld												= 1'b0;
-          FS 													= 5'h10;
-          INT_ACK 												= 0;
-          {DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-          {io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-
-          VHILO_ld                              = 1'b0;
-          #1 {nsi, nsc, nsv, nsn, nsz}					= {psi, 4'b0};
-          state = VLW_MA;
-        end
-        /*
-        ************************************************************************
-        */
-        VLW_MA:
-        begin
-          @(negedge sys_clk)
-          // control word assignments: ALU_out <- RS($rs) + RT(SE_16), RT <- $rt
-          {PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-          {IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-          {D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_111;
-          flag_ld												= 1'b0;
-          FS 													= 5'h00;
-          INT_ACK 												= 0;
-          {DM_cs, DM_rd, DM_wr} 							= 3'b1_1_0;
-          {io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-
-          VHILO_ld                              = 1'b0;
-          #1 {nsi, nsc, nsv, nsn, nsz}					= {psi, 4'b0};
-          state = VWB_LW;
-        end
-        /*
-        ************************************************************************
-        */
-				VWB_LW:
-				begin
-					@(negedge sys_clk)
-					// control word assignments: M[ ALU_out($rs + SE_16)] <- RT($rt)
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b1_01_00_0_0_011;
-          flag_ld												= 1'b0;
-					FS 													= 5'h00;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-
-          VHILO_ld                              = 1'b0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, 4'b0};
-					state = FETCH;
-				end
-        /*
-        ************************************************************************
-        */
-        VSW:
-        begin
-          @(negedge sys_clk)
-          // control word assignments: ALU_out <- RS($rs) + RT(SE_16), RT <- $rt
-          {PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-          {IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-          {D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_000;
-          flag_ld												= 1'b0;
-          FS 													= 5'h10;
-          INT_ACK 												= 0;
-          {DM_cs, DM_rd, DM_wr} 							= 3'b0_0_0;
-          {io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-
-          VHILO_ld                              = 1'b0;
-          #1 {nsi, nsc, nsv, nsn, nsz}					= {psi, 4'b0};
-          state = VWB_mem;
-        end
-
-        /*
-        ************************************************************************
-        */
-				VWB_mem:
-				begin
-					@(negedge sys_clk)
-					// control word assignments: M[ ALU_out($rs + SE_16)] <- RT($rt)
-					{PC_sel, PC_ld, PC_inc, IR_ld} 				= 5'b00_0_0_0;
-					{IM_cs, IM_rd, IM_wr} 							= 3'b0_0_0;
-					{D_En, D_sel, T_sel, S_sel,  HILO_ld, Y_sel} 		= 10'b0_00_00_0_0_111;
-          flag_ld												= 1'b0;
-					FS 													= 5'h00;
-					INT_ACK 												= 0;
-					{DM_cs, DM_rd, DM_wr} 							= 3'b1_0_1;
-					{io_cs, io_rd, io_wr}               		= 3'b0_0_0;
-
-          VHILO_ld                              = 1'b0;
-					#1 {nsi, nsc, nsv, nsn, nsz}					= {psi, 4'b0};
-					state = FETCH;
-				end
-
 		endcase // end of FSM logic
 endmodule

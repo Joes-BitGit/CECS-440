@@ -2,7 +2,7 @@
 /****************************** C E C S  4 4 0 ******************************
  *
  * File Name:  PC.v
- * Project:    Lab_Assignment_5
+ * Project:    CECS 440 Senior Project Design
  * Designer:   Joseph Almeida
  * Email:      Josephnalmeida@gmail.com
  * Rev. No.:   Version 1.0
